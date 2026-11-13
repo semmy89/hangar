@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta name="theme-color" content="#10141b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hangar">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icona-192.png">
+<link rel="apple-touch-icon" href="icona-180.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hangar Gundam Assemble</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: tre schermate a schede (Squadra, Carte, Partita) con barra dei passi fissa in alto. Blu = io, rosso = avversario. */
+:root{
+  --bg:#eef1f5; --panel:#ffffff; --ink:#18202c; --muted:#5d6878; --line:#d5dbe4;
+  --me:#1f5fd1; --me-soft:#e2ebfb; --op:#c8322b; --op-soft:#f9e3e1;
+  --gold:#a77a08; --gold-soft:#fbf1d3; --teal:#0b6e80; --teal-soft:#d6f4f8; --ok:#16834a; --ok-soft:#ddf3e6;
+  --display:"Chakra Petch","Bahnschrift","Segoe UI",sans-serif;
+  --body:"Barlow","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10141b; --panel:#191f29; --ink:#e8ecf2; --muted:#9aa5b5; --line:#2b3442;
+  --me:#6d9cf0; --me-soft:#1b2a45; --op:#ef7a72; --op-soft:#3d1f1e;
+  --gold:#e6b93f; --gold-soft:#3a3018; --teal:#67e8f9; --teal-soft:#103a42; --ok:#55c98a; --ok-soft:#123222; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10141b; --panel:#191f29; --ink:#e8ecf2; --muted:#9aa5b5; --line:#2b3442;
+  --me:#6d9cf0; --me-soft:#1b2a45; --op:#ef7a72; --op-soft:#3d1f1e;
+  --gold:#e6b93f; --gold-soft:#3a3018; --teal:#67e8f9; --teal-soft:#103a42; --ok:#55c98a; --ok-soft:#123222; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:10px;min-height:44px;padding:8px 12px;-webkit-tap-highlight-color:transparent}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+input{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px;min-width:0}
+h2{font:700 20px/1.15 var(--display);margin:0;text-wrap:balance}
+h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
+.hint{color:var(--muted);font-size:13px;margin:0}
+.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.danger{color:var(--op);border-color:var(--op)}
+
+/* Barra dei passi */
+.steps{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);padding-block:10px 6px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.steps button{font:600 14px var(--display);letter-spacing:.04em;display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 4px}
+.steps button small{font:500 11px var(--body);color:var(--muted)}
+.steps button[aria-current="step"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.steps button[aria-current="step"] small{color:var(--bg);opacity:.75}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;align-self:flex-start}
+.seg button{border:0;border-radius:0;min-width:56px;font:700 16px var(--display)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.line{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.line .grow{flex:1;min-width:0}
+
+/* Griglia unita' */
+.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.ub{text-align:left;display:flex;flex-direction:column;gap:1px;padding:7px 10px}
+.ub b{font-weight:600;font-size:14px;line-height:1.2}
+.ub small{color:var(--muted);font-size:11.5px}
+.ub.on{background:var(--me-soft);border-color:var(--me)}
+.ub.on b::before{content:"✓ ";color:var(--me)}
+.ub.op:active{background:var(--op-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 3px 3px 12px;font-size:13.5px;border:1px solid var(--me);background:var(--me-soft)}
+.chip button{min-height:30px;padding:0 10px;border-radius:999px;border:0;background:transparent;font-weight:700}
+.total{font:700 15px var(--display)}
+
+/* Carte */
+.cgroup{display:flex;flex-direction:column;gap:6px}
+.cb{text-align:left;display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:8px 12px}
+.cb b{font-weight:600}
+.cb .t{font:600 12px var(--display);color:var(--muted);text-align:right;white-space:nowrap}
+.cb small{grid-column:1/-1;color:var(--muted);font-size:12px}
+.cb.firma{border-left:4px solid var(--gold)} .cb.tratto{border-left:4px solid var(--teal)} .cb.generica{border-left:4px solid var(--line)}
+.cb.on{background:var(--ok-soft);border-color:var(--ok)}
+.cb.on b::before{content:"✓ ";color:var(--ok)}
+.count{font:700 26px var(--display);font-variant-numeric:tabular-nums}
+.count.full{color:var(--ok)}
+.aff{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;background:var(--gold-soft);border:1px solid var(--gold);border-radius:12px;padding:10px 12px}
+.aff b{font:700 22px var(--display);color:var(--gold)}
+.aff ul{flex-basis:100%;margin:2px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
+.saved{display:flex;flex-direction:column;gap:6px}
+.sv{display:flex;gap:6px;align-items:center;border:1px dashed var(--line);border-radius:10px;padding:6px 6px 6px 12px}
+.sv span{flex:1;min-width:0}
+.sv span b{display:block;font-weight:600}
+.sv span small{color:var(--muted);font-size:12px}
+.sv button{min-height:38px;padding:4px 10px}
+
+/* Partita */
+.board{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);z-index:5;background:var(--bg);padding-block:4px}
+.scores{display:grid;grid-template-columns:1fr auto 1fr;gap:8px}
+.sc{border-radius:14px;padding:8px 12px;display:flex;flex-direction:column;min-width:0}
+.sc.me{background:var(--me-soft);border:2px solid var(--me)}
+.sc.op{background:var(--op-soft);border:2px solid var(--op);text-align:right}
+.sc .nm{font:600 13px var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc.me .nm{color:var(--me)} .sc.op .nm{color:var(--op)}
+.sc .pts{font:700 40px/1 var(--display);font-variant-numeric:tabular-nums}
+.mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:80px}
+.mid .ph{font:700 11px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.mid .rd{font:700 22px/1 var(--display);font-variant-numeric:tabular-nums}
+.mid .rd small{font-size:12px;color:var(--muted)}
+.mid div{display:flex;gap:4px}
+.mid button{min-height:32px;padding:2px 10px;font-weight:700}
+.banner{margin-top:6px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:10px;padding:6px 10px;font-size:13.5px}
+.sec-op{border-top:5px solid var(--op)} .sec-me{border-top:5px solid var(--me)}
+.kills{display:flex;flex-direction:column;gap:6px}
+.kill{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 12px}
+.kill.rws{margin-left:18px;border-style:dashed}
+.kill .who{flex:1;min-width:0;display:flex;flex-direction:column}
+.kill .who b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kill .who small{color:var(--muted);font-size:12px}
+.kill .go{min-width:118px;font:700 15px var(--display)}
+.sec-op .kill .go{background:var(--me);color:var(--panel);border-color:var(--me)}
+.sec-me .kill .go{background:var(--op);color:var(--panel);border-color:var(--op)}
+.kill.down{opacity:.55}
+.kill.down .who b{text-decoration:line-through}
+.kill.down .go{background:var(--panel);color:var(--muted);border-color:var(--line)}
+.kill .x{min-height:36px;padding:0 10px}
+.kill .times{color:var(--gold);font-weight:600}
+.extra{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.extra .col{display:flex;flex-direction:column;gap:6px;min-width:0}
+.extra .col h3.me{color:var(--me)} .extra .col h3.op{color:var(--op)}
+.extra button{text-align:left;display:flex;justify-content:space-between;gap:6px;font-weight:500}
+.extra button span:last-child{font:700 14px var(--display)}
+.obj{display:flex;gap:6px}
+.obj input{width:56px;text-align:center}
+.obj button{flex:1}
+.deck{display:flex;flex-wrap:wrap;gap:6px}
+.dc{font-size:13.5px;padding:6px 10px;min-height:40px}
+.dc.played{opacity:.45;text-decoration:line-through}
+.log{list-style:none;margin:0;padding:0;max-height:240px;overflow:auto;display:flex;flex-direction:column}
+.log li{display:grid;grid-template-columns:48px 1fr auto;gap:8px;font-size:14px;padding:5px 0;border-bottom:1px solid var(--line)}
+.log .t{color:var(--muted);font-size:12px;padding-top:2px;font-variant-numeric:tabular-nums}
+.log .p{font:700 14px var(--display)}
+.log .me{color:var(--me)} .log .op{color:var(--op)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow button{flex:1;min-width:120px;font-weight:600}
+.result{border-radius:12px;padding:12px;background:var(--gold-soft);border:1px solid var(--gold)}
+.result .w{font:700 22px var(--display)}
+@media (max-width:420px){.extra{grid-template-columns:1fr}.sc .pts{font-size:34px}.mid{min-width:68px}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <nav class="steps" aria-label="Passi">
+    <button data-go="squadra">Squadra<small id="st1"></small></button>
+    <button data-go="carte">Carte<small id="st2"></small></button>
+    <button data-go="partita">Partita<small id="st3"></small></button>
+  </nav>
+
+  <!-- ============ SQUADRA ============ -->
+  <section id="v-squadra" class="wrap">
+    <div class="panel">
+      <h2>Crea la tua squadra</h2>
+      <div class="line"><h3>Unità</h3><div class="seg" id="size"><button data-size="3">3</button><button data-size="5">5</button></div></div>
+      <div class="line"><span class="grow chips" id="myChips"></span><span class="total" id="myTotal"></span></div>
+      <p class="hint" id="sqHint"></p>
+      <div class="ugrid" id="myGrid"></div>
+      <button class="primary" id="toCards">Avanti: scegli le carte</button>
+    </div>
+    <div class="panel">
+      <h3>Squadre salvate</h3>
+      <div class="saved" id="saved"></div>
+    </div>
+  </section>
+
+  <!-- ============ CARTE ============ -->
+  <section id="v-carte" class="wrap" hidden>
+    <div class="panel">
+      <div class="line"><h2 class="grow">Scegli 9 carte Tattiche</h2><span class="count" id="count">0/9</span></div>
+      <p class="hint">Qui ci sono solo le carte che la tua squadra può usare: <b>firma</b> delle tue unità (bordo giallo), <b>tratto</b> che hai in squadra (bordo azzurro) e generiche. Una copia per carta.</p>
+      <div class="btnrow"><button id="best">Mazzo consigliato</button><button id="clearDeck">Svuota</button></div>
+      <div class="aff" id="aff"></div>
+      <div id="cardList" class="cgroup"></div>
+    </div>
+    <div class="panel">
+      <h3>Nome della squadra</h3>
+      <input id="sqName" maxlength="30" placeholder="Es. Asticassia RWS" aria-label="Nome della squadra">
+      <button class="primary" id="create">Crea squadra e vai alla partita</button>
+      <p class="hint" id="createHint"></p>
+    </div>
+  </section>
+
+  <!-- ============ PARTITA ============ -->
+  <section id="v-partita" class="wrap" hidden>
+    <div class="board">
+      <div class="scores">
+        <div class="sc me"><span class="nm" id="meName">Io</span><span class="pts" id="ptMe">0</span></div>
+        <div class="mid"><span class="ph" id="phase">Fase 1</span><span class="rd"><span id="round">1</span><small>/10</small></span>
+          <div><button id="rdDown" aria-label="Round precedente">−</button><button id="rdUp" aria-label="Round successivo">+</button></div></div>
+        <div class="sc op"><span class="nm">Avversario</span><span class="pts" id="ptOp">0</span></div>
+      </div>
+      <div class="banner" id="banner" hidden></div>
+    </div>
+
+    <div class="panel sec-op">
+      <h2>Gundam dell'avversario</h2>
+      <p class="hint">Tocca i suoi robot per aggiungerli. Ogni volta che ne elimini uno, premi <b>Eliminato</b>: i suoi VP vanno a te. I robot tornano in campo, quindi puoi premerlo più volte.</p>
+      <div class="kills" id="opList"></div>
+      <details id="opAdd" open><summary class="hint" style="cursor:pointer;min-height:32px;display:flex;align-items:center">Aggiungi robot avversario</summary>
+        <div class="ugrid" id="opGrid"></div></details>
+    </div>
+
+    <div class="panel">
+      <h3>Altri punti</h3>
+      <div class="extra">
+        <div class="col"><h3 class="me">Io</h3>
+          <button data-pt="me|2|Garrison nemica distrutta"><span>Garrison nemica distrutta</span><span>+2</span></button>
+          <button data-pt="me|2|Garrison salvata"><span>Garrison salvata</span><span>+2</span></button>
+          <div class="obj"><input id="objMe" type="number" inputmode="numeric" min="1" value="1" aria-label="VP obiettivi miei"><button data-obj="me">Obiettivi</button></div>
+          <div class="obj"><button data-pt="me|-1|Correzione">−1</button><button data-pt="me|1|Correzione">+1</button></div>
+        </div>
+        <div class="col"><h3 class="op">Avversario</h3>
+          <button data-pt="op|2|Garrison nemica distrutta"><span>Garrison nemica distrutta</span><span>+2</span></button>
+          <button data-pt="op|2|Garrison salvata"><span>Garrison salvata</span><span>+2</span></button>
+          <div class="obj"><input id="objOp" type="number" inputmode="numeric" min="1" value="1" aria-label="VP obiettivi avversario"><button data-obj="op">Obiettivi</button></div>
+          <div class="obj"><button data-pt="op|-1|Correzione">−1</button><button data-pt="op|1|Correzione">+1</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel sec-me">
+      <h2 id="myTitle">La mia squadra</h2>
+      <p class="hint">Se l'avversario elimina un tuo robot, premi <b>Perso</b>: i suoi VP vanno all'avversario.</p>
+      <div class="kills" id="meList"></div>
+      <h3>Il mio mazzo (tocca le carte giocate)</h3>
+      <div class="deck" id="meDeck"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Registro</h3>
+      <ul class="log" id="log"></ul>
+      <p class="hint" id="logEmpty">Ancora nessun punto.</p>
+      <div class="btnrow"><button id="undo">Annulla ultimo</button><button id="finish" class="primary">Fine partita</button></div>
+      <div id="result" hidden></div>
+      <div class="btnrow"><button id="newGame" class="danger">Nuova partita</button></div>
+      <div id="newConfirm" hidden><p class="hint">Azzero punti, round e robot avversari? La tua squadra resta.</p>
+        <div class="btnrow"><button id="newYes" class="danger">Sì, nuova partita</button><button id="newNo">No</button></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const D = {"unita": [{"carta": "ST01-U01", "nome": "Gundam", "titolo": "Legendary Hero", "tl": 2, "pv": 15, "vp": 8, "tratti": ["Legendary Hero", "Amuro Ray", "Earth Federation"], "mp": false, "componenti": [], "abilita": [["Frenzied Charge", "command", true], ["Escape from Side 7", "response", false]], "parole": ["Energy", "Garrison", "Shield", "Strength", "Upgrade"], "segnalini": []}, {"carta": "ST01-U02", "nome": "Wing Gundam Zero (EW)", "titolo": "Wing of Destruction", "tl": 3, "pv": 12, "vp": 9, "tratti": ["Wing of Destruction", "Heero Yuy", "G Team"], "mp": false, "componenti": [], "abilita": [["Full Power", "command", true], ["Zero System", "ongoing", false], ["Hover", "ongoing", false]], "parole": ["Hover", "Strength"], "segnalini": []}, {"carta": "ST01-U03", "nome": "Gundam Barbatos Lupus Rex", "titolo": "Final Stand", "tl": 2, "pv": 17, "vp": 10, "tratti": ["Final Stand", "Mikazuki Augus", "Tekkadan"], "mp": false, "componenti": [], "abilita": [["Annihilate", "command", true], ["Alaya-Vijnana Exertion", "command", false], ["Fight to the End", "ongoing", false]], "parole": ["Slow", "Strength"], "segnalini": []}, {"carta": "ST01-U04", "nome": "Char's Zaku II", "titolo": "Fast Encounter", "tl": 2, "pv": 12, "vp": 7, "tratti": ["Fast Encounter", "Char Aznable", "Zeon"], "mp": false, "componenti": [], "abilita": [["Checkmate", "command", true], ["Three-Times Faster", "ongoing", false], ["Char Kick", "response", false]], "parole": ["Fracture", "Upgrade"], "segnalini": []}, {"carta": "ST01-U05", "nome": "Gundam Epyon (EW)", "titolo": "Crimson Cataclysm", "tl": 3, "pv": 15, "vp": 9, "tratti": ["Crimson Cataclysm", "Zechs Merquise", "White Fang", "OZ"], "mp": false, "componenti": [], "abilita": [["No Escape", "command", true], ["Exploit Weakness", "ongoing", false], ["Hover", "ongoing", false]], "parole": ["Disarm", "Hover", "Slow", "Strength"], "segnalini": []}, {"carta": "ST01-U06", "nome": "Gundam Vidar", "titolo": "Cold Justice", "tl": 1, "pv": 13, "vp": 7, "tratti": ["Cold Justice", "Vidar", "Gjallarhorn"], "mp": false, "componenti": [], "abilita": [["Hunter's Edge", "command", true], ["Alaya-Vijnana Type-E System", "command", false]], "parole": ["Strength"], "segnalini": []}, {"carta": "PA01-U01", "nome": "Gundam", "titolo": "Elite Mobile Suit", "tl": 1, "pv": 17, "vp": 10, "tratti": ["Elite Mobile Suit", "Amuro Ray", "Earth Federation"], "mp": false, "componenti": [], "abilita": [["Toss Away", "response", true], ["Inspiring Presence", "response", false], ["Challenge", "response", false]], "parole": ["Disarm", "Fracture"], "segnalini": []}, {"carta": "PA01-U02", "nome": "Guncannon", "titolo": "In Position", "tl": 2, "pv": 12, "vp": 7, "tratti": ["In Position", "Kai Shiden", "Earth Federation"], "mp": false, "componenti": [], "abilita": [["Stunning Shot", "response", true], ["Firing Line", "ongoing", false]], "parole": ["Fracture", "Strength"], "segnalini": []}, {"carta": "PA01-U03", "nome": "Guntank", "titolo": "Battlefield Bombarder", "tl": 2, "pv": 13, "vp": 7, "tratti": ["Battlefield Bombarder", "Hayato Kobayashi", "Earth Federation"], "mp": false, "componenti": [], "abilita": [["Coordinated Payload", "response", true], ["Crowd Control", "response", false]], "parole": ["Disarm", "Strength"], "segnalini": []}, {"carta": "EX01-U01", "nome": "Unicorn Gundam (Destroy Mode)", "titolo": "Laplace's Guardian", "tl": 3, "pv": 14, "vp": 10, "tratti": ["Laplace's Guardian", "Banagher Links", "Civilian", "Earth Federation", "Londo Bell"], "mp": false, "componenti": [], "abilita": [["Psycho-Frame Synchrony", "response", true], ["Newtype Destroyer", "ongoing", false]], "parole": ["Strength", "Upgrade"], "segnalini": []}, {"carta": "EX01-U02", "nome": "Torohachi", "titolo": "Petite Mobile Suit", "tl": 1, "pv": 8, "vp": 5, "tratti": ["Petite Mobile Suit", "Civilian", "Earth Federation", "Mass Produced"], "mp": true, "componenti": [], "abilita": [["Rescue Maneuver", "command", true], ["Supply", "response", false], ["Material Transfer", "command", false]], "parole": ["Garrison", "Shield", "Upgrade"], "segnalini": []}, {"carta": "EX01-U03", "nome": "Delta Plus", "titolo": "Rapid Response", "tl": 2, "pv": 11, "vp": 7, "tratti": ["Rapid Response", "Riddhe Marcenas", "Earth Federation", "Londo Bell"], "mp": false, "componenti": [], "abilita": [["Blitzing Slash", "response", true], ["Jet Through", "ongoing", false]], "parole": ["Hover", "Slow", "Speed", "Strength", "Upgrade"], "segnalini": []}, {"carta": "EX02-U01", "nome": "Gundam Aerial", "titolo": "Protective Heroine", "tl": 1, "pv": 16, "vp": 10, "tratti": ["Protective Heroine", "Suletta Mercury", "Asticassia"], "mp": false, "componenti": [["BIT Stave", 1]], "abilita": [["Permet Burst", "response", true], ["BIT Stave Direct", "command", false], ["Challenge", "response", false]], "parole": ["RWS", "Strength"], "segnalini": [["BIT Stave", 2, 1]]}, {"carta": "EX02-U02", "nome": "Gundam Pharact", "titolo": "Silent Hunter", "tl": 2, "pv": 12, "vp": 7, "tratti": ["Silent Hunter", "Elan Ceres", "Asticassia"], "mp": false, "componenti": [["Corax", 1]], "abilita": [["Lockdown", "response", true], ["Corax Direct", "command", false], ["Hover", "ongoing", false]], "parole": ["Hover", "RWS", "Shield", "Slow", "Upgrade"], "segnalini": [["Corax", 2, 1]]}, {"carta": "EX02-U03", "nome": "Darilbalde", "titolo": "Frontline Duelist", "tl": 3, "pv": 13, "vp": 8, "tratti": ["Frontline Duelist", "Guel Jeturk", "Asticassia"], "mp": false, "componenti": [["Isvara B Type", 1]], "abilita": [["Sundering Strike", "command", true], ["Isvara B Type Direct", "command", false]], "parole": ["Disarm", "Fracture", "RWS"], "segnalini": [["Isvara B Type", 2, 1]]}], "tattiche": [{"nome": "Epic Shot", "tipo": "Attack", "costo": 3, "firma": "Legendary Hero", "tratti": [], "parole": ["Strength"], "arma": "Beam Rifle TL3/G5/F7"}, {"nome": "Sacrificial Overload", "tipo": "Response", "costo": 0, "firma": "Wing of Destruction", "tratti": [], "parole": [], "arma": ""}, {"nome": "Iron-Blooded Tenacity", "tipo": "Response", "costo": 0, "firma": "Final Stand", "tratti": [], "parole": [], "arma": ""}, {"nome": "Armor Shatter", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": ["Fracture"], "arma": ""}, {"nome": "Field Engineers", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}, {"nome": "Hero's Might", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": ["Energy", "Garrison"], "arma": ""}, {"nome": "Thrust Boosters", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": ["Speed", "Upgrade"], "arma": ""}, {"nome": "Breaking Blow", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": ["Strength", "Upgrade"], "arma": ""}, {"nome": "Quick Block", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}, {"nome": "Crimson Execution", "tipo": "Command", "costo": 0, "firma": "Fast Encounter", "tratti": [], "parole": [], "arma": ""}, {"nome": "War Edge", "tipo": "Attack", "costo": 3, "firma": "Crimson Cataclysm", "tratti": [], "parole": [], "arma": "Beam Sword TL3/GSP/F8"}, {"nome": "Claiming Vengeance", "tipo": "Attack", "costo": 2, "firma": "Cold Justice", "tratti": [], "parole": ["Disarm"], "arma": "110mm Rifle TL2/G3/F4"}, {"nome": "Armor Upgrade", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": ["Shield", "Upgrade"], "arma": ""}, {"nome": "Ghost Step", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}, {"nome": "Renewed Power", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": ["Strength", "Upgrade"], "arma": ""}, {"nome": "Limiter Release", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": ["Strength"], "arma": ""}, {"nome": "Neutralize", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": ["Upgrade"], "arma": ""}, {"nome": "Strikethrough", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}, {"nome": "Protective Shot", "tipo": "Response", "costo": 0, "firma": "Elite Mobile Suit", "tratti": [], "parole": [], "arma": ""}, {"nome": "All In", "tipo": "Command", "costo": 0, "firma": "In Position", "tratti": [], "parole": [], "arma": ""}, {"nome": "Bulwark Siege", "tipo": "Command", "costo": 0, "firma": "Battlefield Bombarder", "tratti": [], "parole": ["Fracture"], "arma": ""}, {"nome": "Formative Strength", "tipo": "Response", "costo": 0, "firma": "", "tratti": ["Earth Federation"], "parole": ["Strength"], "arma": ""}, {"nome": "Sayla's Encouragement", "tipo": "Response", "costo": 0, "firma": "", "tratti": ["Earth Federation"], "parole": ["Energy"], "arma": ""}, {"nome": "Breaker Sweep", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": ["Upgrade"], "arma": ""}, {"nome": "Systematic Elimination", "tipo": "Command", "costo": 0, "firma": "", "tratti": [], "parole": ["Garrison", "Strength"], "arma": ""}, {"nome": "Counter Attack", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}, {"nome": "Interference", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}, {"nome": "Psycho-Frame Overload", "tipo": "Command", "costo": 0, "firma": "Laplace's Guardian", "tratti": [], "parole": ["Upgrade"], "arma": ""}, {"nome": "Critical Rescue", "tipo": "Command", "costo": 0, "firma": "Petite Mobile Suit", "tratti": [], "parole": ["Garrison"], "arma": ""}, {"nome": "Swift Appropriation", "tipo": "Command", "costo": 0, "firma": "Rapid Response", "tratti": [], "parole": ["Energy", "Upgrade"], "arma": ""}, {"nome": "Full System Burn", "tipo": "Command", "costo": 0, "firma": "", "tratti": ["Londo Bell"], "parole": ["Hover", "Speed"], "arma": ""}, {"nome": "On-Site Integration", "tipo": "Command", "costo": 0, "firma": "", "tratti": ["Londo Bell"], "parole": ["Upgrade"], "arma": ""}, {"nome": "Salvage Systems", "tipo": "Command", "costo": 0, "firma": "", "tratti": ["Londo Bell"], "parole": ["Energy"], "arma": ""}, {"nome": "Special OPs", "tipo": "Command", "costo": 0, "firma": "", "tratti": ["Londo Bell"], "parole": ["Upgrade"], "arma": ""}, {"nome": "Target Reacquisition", "tipo": "Response", "costo": 0, "firma": "", "tratti": ["Londo Bell"], "parole": [], "arma": ""}, {"nome": "Grunt's Guard", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}, {"nome": "Bit Assault", "tipo": "Command", "costo": 0, "firma": "Protective Heroine", "tratti": [], "parole": ["RWS"], "arma": ""}, {"nome": "Cold Silence", "tipo": "Command", "costo": 0, "firma": "Silent Hunter", "tratti": [], "parole": [], "arma": ""}, {"nome": "Isvara Assault", "tipo": "Command", "costo": 0, "firma": "Frontline Duelist", "tratti": [], "parole": [], "arma": ""}, {"nome": "Dismantle", "tipo": "Command", "costo": 0, "firma": "", "tratti": ["Asticassia"], "parole": ["RWS", "Upgrade"], "arma": ""}, {"nome": "Drone Assault", "tipo": "Command", "costo": 0, "firma": "", "tratti": ["Asticassia"], "parole": ["RWS"], "arma": ""}, {"nome": "Interference Pattern", "tipo": "Command", "costo": 0, "firma": "", "tratti": ["Asticassia"], "parole": ["Disarm"], "arma": ""}, {"nome": "BIT Shield", "tipo": "Response", "costo": 0, "firma": "", "tratti": ["Asticassia"], "parole": ["RWS"], "arma": ""}, {"nome": "Linked Strike", "tipo": "Response", "costo": 0, "firma": "", "tratti": ["Asticassia"], "parole": ["RWS", "Strength"], "arma": ""}, {"nome": "Interception", "tipo": "Response", "costo": 0, "firma": "", "tratti": [], "parole": [], "arma": ""}], "avvisi": [], "pesi": {"tratto_comune": 2.0, "carta_firma": 3.0, "carta_tratto": 1.0, "tratto_max_unita": 3, "carta_generica": 0.0, "opzione_extra": 0.5, "carta_mancante": -5.0, "tl_posizione_diversa": 1.0, "tl_impilata": -1.0, "vp": -0.25, "componente": 1.0, "sinergia_componente": 1.0, "parola_chiave": 0.5, "parola_chiave_max": 4}, "pesi_abilita": {"command": 1.0, "response": 1.0, "ongoing": 1.0, "attack": 0.5, "setup": 0.5, "energy": -0.5}, "parole_chiave": ["Upgrade", "Speed", "Shield", "Strength", "Hover", "RWS", "Garrison", "Slow", "Disarm", "Fracture", "Energy"], "mazzo": 9};
+const P = D.pesi, PA = D.pesi_abilita, MAZZO = D.mazzo, PRIO = {firma:0, tratto:1, generica:2};
+const low = s => String(s).toLowerCase();
+D.unita.forEach(u => { u.tset = new Set(u.tratti.map(low)); u.pset = new Set(u.parole);
+  u.vpSeg = u.segnalini.reduce((a, s) => a + s[1] * s[2], 0); });
+D.tattiche.forEach(t => { t.treq = t.tratti.map(low); t.pset = new Set(t.parole); });
+const byCard = Object.fromEntries(D.unita.map(u => [u.carta, u]));
+const byTac = Object.fromEntries(D.tattiche.map(t => [t.nome, t]));
+
+// ---------- Regole di squadra e mazzo (come build.py) ----------
+function distinte(sq) { const m = new Map(); sq.forEach(u => { if (!m.has(u.carta)) m.set(u.carta, u); }); return [...m.values()]; }
+function unitaConTratti(sq, t) { return distinte(sq).filter(u => t.treq.every(x => u.tset.has(x))).length; }
+function valoreCarta(sq, t, k) {
+  if (k === "firma") return P.carta_firma;
+  if (k === "tratto") return P.carta_tratto * Math.min(unitaConTratti(sq, t), P.tratto_max_unita);
+  return P.carta_generica;
+}
+function carteLegali(sq) {
+  const titoli = new Set(sq.map(u => low(u.titolo)));
+  const tratti = new Set(); sq.forEach(u => u.tset.forEach(x => tratti.add(x)));
+  const out = [];
+  for (const t of D.tattiche) {
+    if (t.firma && !titoli.has(low(t.firma))) continue;
+    if (t.treq.length && !t.treq.every(x => tratti.has(x))) continue;
+    let k, m;
+    if (t.firma) { k = "firma"; m = `firma di "${t.firma}"`; }
+    else if (t.tratti.length) { k = "tratto"; m = `tratto ${t.tratti.join("+")} (${unitaConTratti(sq, t)} unità in squadra)`; }
+    else { k = "generica"; m = "senza requisiti"; }
+    out.push({t, k, m});
+  }
+  return out;
+}
+const cmpStr = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function ordina(sq, leg) {
+  const ps = new Set(); sq.forEach(u => u.pset.forEach(w => ps.add(w)));
+  const key = c => [PRIO[c.k], -valoreCarta(sq, c.t, c.k), -[...c.t.pset].filter(w => ps.has(w)).length, c.t.costo];
+  return leg.slice().sort((a, b) => { const ka = key(a), kb = key(b);
+    for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+    return cmpStr(low(a.t.nome), low(b.t.nome)); });
+}
+function f1(v) { const x = v * 10, fl = Math.floor(x), d = x - fl;
+  const r = d > 0.5 ? fl + 1 : d < 0.5 ? fl : (fl % 2 === 0 ? fl : fl + 1); return (r / 10).toFixed(1); }
+// Punteggio di affinita' con il mazzo scelto dall'utente
+function affinita(sq, mazzo, legali) {
+  const voci = [], dist = distinte(sq);
+  const cont = new Map(); dist.forEach(u => new Set(u.tratti.map(low)).forEach(t => cont.set(t, (cont.get(t) || 0) + 1)));
+  voci.push(["Tratti in comune", [...cont.values()].filter(n => n >= 2).reduce((a, n) => a + P.tratto_comune * (n - 1), 0)]);
+  const nomiMazzo = new Set(mazzo.map(c => c.t.nome));
+  const extra = legali.filter(c => !nomiMazzo.has(c.t.nome) && c.k !== "generica").length;
+  voci.push(["Carte Tattiche", mazzo.reduce((a, c) => a + valoreCarta(sq, c.t, c.k), 0) + extra * P.opzione_extra + (MAZZO - mazzo.length) * P.carta_mancante]);
+  const fonti = new Map();
+  dist.forEach(u => u.pset.forEach(w => { if (!fonti.has(w)) fonti.set(w, [0, 0]); fonti.get(w)[0]++; }));
+  mazzo.forEach(c => c.t.pset.forEach(w => { if (!fonti.has(w)) fonti.set(w, [0, 0]); fonti.get(w)[1]++; }));
+  let p = 0; for (const w of D.parole_chiave) { const f = fonti.get(w); if (f && f[0] >= 1 && f[0] + f[1] >= 2) p += P.parola_chiave * Math.min(f[0] + f[1] - 1, P.parola_chiave_max); }
+  voci.push(["Parole chiave", p]);
+  const ctl = new Map(); sq.forEach(u => ctl.set(u.tl, (ctl.get(u.tl) || 0) + 1));
+  voci.push(["Timeline", P.tl_posizione_diversa * (ctl.size - 1) + P.tl_impilata * [...ctl.values()].reduce((a, n) => a + n - 1, 0)]);
+  voci.push(["VP", P.vp * sq.reduce((a, u) => a + u.vp + u.vpSeg, 0)]);
+  p = 0; for (const u of sq) { p += u.componenti.length * P.componente;
+    for (const [nab, tipo, en] of u.abilita) { if (tipo !== "energy") p += PA[tipo] || 0; if (en) p += PA.energy;
+      for (const [nc] of u.componenti) if (nc && low(nab).includes(low(nc))) p += P.sinergia_componente; } }
+  voci.push(["Componenti e abilità", p]);
+  return {tot: voci.reduce((a, v) => a + v[1], 0), voci};
+}
+
+// ---------- Stato (salvato su questo telefono) ----------
+const KEY = "hangar-ga-v1";
+function nuovaPartita() { return {opp: [], log: [], fase: 1, round: 1, played: [], ended: false, tieWinner: null, last: null}; }
+let S = {view: "squadra", size: 3, mine: [], deck: [], name: "", saved: [], game: nuovaPartita()};
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.mine)) S = Object.assign(S, s); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mySq = () => S.mine.map(c => byCard[c]).filter(Boolean);
+const myLegal = () => carteLegali(mySq());
+const myDeck = () => { const leg = new Map(myLegal().map(c => [c.t.nome, c])); return S.deck.map(n => leg.get(n)).filter(Boolean); };
+function pulisciMazzo() { const ok = new Set(myLegal().map(c => c.t.nome)); S.deck = S.deck.filter(n => ok.has(n)); }
+const vpTxt = u => u.vpSeg ? `${u.vp} VP (+${u.vpSeg} RWS)` : `${u.vp} VP`;
+
+// ---------- Squadra ----------
+function renderSquadra() {
+  document.querySelectorAll("#size button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.size === S.size));
+  const sq = mySq(), pieno = sq.length >= S.size;
+  $("myChips").innerHTML = sq.length ? sq.map((u, i) => `<span class="chip">${esc(u.nome)} <small>${u.carta}</small><button data-rmme="${i}" aria-label="Togli ${esc(u.nome)}">×</button></span>`).join("")
+    : '<span class="hint">Nessuna unità scelta.</span>';
+  $("myTotal").textContent = `${sq.length}/${S.size} · ${sq.reduce((a, u) => a + u.vp + u.vpSeg, 0)} VP`;
+  $("sqHint").textContent = pieno ? "Squadra completa. Puoi togliere un'unità con × per cambiarla." : "Tocca i robot da mettere in squadra. Niente doppioni con lo stesso numero carta, tranne Torohachi (Mass Produced).";
+  $("myGrid").innerHTML = D.unita.map(u => { const n = S.mine.filter(c => c === u.carta).length;
+    const dis = pieno || (n > 0 && !u.mp);
+    return `<button class="ub${n ? " on" : ""}" data-addme="${u.carta}" ${dis ? "disabled" : ""}><b>${esc(u.nome)}${n > 1 ? " ×" + n : ""}</b><small>${u.carta} · ${esc(u.titolo)}</small><small>${vpTxt(u)}${u.mp ? " · MP" : ""}</small></button>`; }).join("");
+  $("toCards").disabled = sq.length !== S.size;
+  $("saved").innerHTML = S.saved.length ? S.saved.map((s, i) => `<div class="sv"><span><b>${esc(s.name)}</b><small>${s.mine.map(c => byCard[c] ? byCard[c].nome : c).join(", ")} · ${s.deck.length} carte</small></span>
+      <button data-load="${i}">Usa</button><button data-delsv="${i}" aria-label="Elimina ${esc(s.name)}">×</button></div>`).join("")
+    : '<p class="hint">Le squadre create compaiono qui, pronte da riusare.</p>';
+}
+
+// ---------- Carte ----------
+function renderCarte() {
+  pulisciMazzo();
+  const sq = mySq(), leg = ordina(sq, myLegal()), sel = new Set(S.deck), pieno = S.deck.length >= MAZZO;
+  $("count").textContent = `${S.deck.length}/${MAZZO}`; $("count").classList.toggle("full", S.deck.length === MAZZO);
+  const gruppi = [["firma", "Carte firma"], ["tratto", "Carte con tratto"], ["generica", "Carte generiche"]];
+  $("cardList").innerHTML = gruppi.map(([k, tit]) => { const l = leg.filter(c => c.k === k); if (!l.length) return "";
+    return `<h3>${tit} (${l.length})</h3>` + l.map(c => { const on = sel.has(c.t.nome);
+      return `<button class="cb ${k}${on ? " on" : ""}" data-card="${esc(c.t.nome)}" ${!on && pieno ? "disabled" : ""}><b>${esc(c.t.nome)}</b><span class="t">${esc(c.t.tipo)}${c.t.costo ? " TL" + c.t.costo : ""}</span><small>${esc(c.m)}${c.t.arma ? " · arma " + esc(c.t.arma) : ""}</small></button>`; }).join(""); }).join("")
+    || '<p class="hint">Scegli prima le unità.</p>';
+  if (sq.length) { const a = affinita(sq, myDeck(), leg);
+    $("aff").hidden = false;
+    $("aff").innerHTML = `<span>Affinità della squadra</span><b>${f1(a.tot)}</b><ul>${a.voci.map(([n, v]) => `<li>${n}: ${v >= 0 ? "+" : ""}${f1(v)}</li>`).join("")}</ul>`;
+  } else $("aff").hidden = true;
+  const pronto = sq.length === S.size && S.deck.length === MAZZO;
+  $("create").disabled = !pronto;
+  $("createHint").textContent = pronto ? "" : sq.length !== S.size ? `Servono ${S.size} unità (ne hai ${sq.length}).` : `Servono esattamente ${MAZZO} carte (ne hai ${S.deck.length}).`;
+  $("sqName").value = S.name;
+}
+
+// ---------- Partita ----------
+const G = () => S.game;
+const pts = who => G().log.filter(e => e.who === who).reduce((a, e) => a + e.pts, 0);
+const giu = key => G().log.some(e => e.key === key);
+function add(who, p, txt, key) { if (!p) return; G().log.push({who, pts: p, txt, key, fase: G().fase, round: G().round}); G().last = who; G().ended = false; save(); renderPartita(); }
+// Un robot avversario si puo' togliere dall'elenco solo se ne' lui ne' i suoi RWS hanno gia' dato punti
+const toccato = i => G().log.some(e => e.key && (e.key === "op:u" + i || e.key.startsWith("op:r" + i + ".")));
+function killRows(list, side) {   // side "op": robot avversari (punti a me); "me": i miei (punti all'avversario)
+  const rows = [];
+  // I robot tornano in campo: si possono eliminare piu' volte, ogni volta valgono di nuovo i loro VP
+  const volte = k => G().log.filter(e => e.key === k).length;
+  const conta = (n, parola) => n ? ` · <span class="times">${parola} ${n} ${n === 1 ? "volta" : "volte"}</span>` : "";
+  list.forEach((c, i) => { const u = byCard[c]; if (!u) return;
+    const k = side + ":u" + i, n = volte(k), parola = side === "op" ? "eliminato" : "perso";
+    rows.push(`<div class="kill"><span class="who"><b>${esc(u.nome)}</b><small>${u.carta} · ${esc(u.titolo)}${conta(n, parola)}</small></span>
+      ${side === "op" && !toccato(i) ? `<button class="x" data-rmop="${i}" aria-label="Togli ${esc(u.nome)}">×</button>` : ""}
+      <button class="go" data-kill="${side}|${i}|u">${side === "op" ? "Eliminato" : "Perso"} +${u.vp}</button></div>`);
+    u.segnalini.forEach(([nome, vp, q], j) => { for (let m = 0; m < q; m++) { const kr = side + ":r" + i + "." + j + "." + m, nr = volte(kr);
+      rows.push(`<div class="kill rws"><span class="who"><b>${esc(nome)}</b><small>segnalino RWS${conta(nr, "distrutto")}</small></span>
+        <button class="go" data-kill="${side}|${i}|r${j}.${m}">Distrutto +${vp}</button></div>`); } });
+  });
+  return rows.join("");
+}
+function renderPartita() {
+  const g = G();
+  $("meName").textContent = S.name || "Io";
+  $("ptMe").textContent = pts("me"); $("ptOp").textContent = pts("op");
+  $("phase").textContent = "Fase " + g.fase; $("round").textContent = g.round;
+  $("rdDown").disabled = g.fase === 1 && g.round === 1; $("rdUp").disabled = g.fase === 2 && g.round === 10;
+  $("banner").hidden = g.round !== 10;
+  $("banner").innerHTML = `<b>Ultimo round della Fase ${g.fase}.</b> A fine round segnate gli Obiettivi.`;
+  $("opList").innerHTML = g.opp.length ? killRows(g.opp, "op") : '<p class="hint">Nessun robot avversario: aggiungili qui sotto.</p>';
+  $("opGrid").innerHTML = D.unita.map(u => `<button class="ub op" data-addop="${u.carta}"><b>${esc(u.nome)}</b><small>${u.carta} · ${vpTxt(u)}</small></button>`).join("");
+  $("myTitle").textContent = S.name ? S.name : "La mia squadra";
+  $("meList").innerHTML = S.mine.length ? killRows(S.mine, "me") : '<p class="hint">Crea prima la tua squadra.</p>';
+  $("meDeck").innerHTML = S.deck.length ? S.deck.map(n => `<button class="dc${g.played.includes(n) ? " played" : ""}" data-play="${esc(n)}">${esc(n)}</button>`).join("") : '<p class="hint">Nessun mazzo.</p>';
+  $("log").innerHTML = g.log.slice().reverse().map(e => `<li><span class="t">F${e.fase} R${e.round}</span><span>${e.who === "me" ? esc(S.name || "Io") : "Avversario"}: ${esc(e.txt)}</span><span class="p ${e.who}">${e.pts > 0 ? "+" : ""}${e.pts}</span></li>`).join("");
+  $("logEmpty").hidden = g.log.length > 0; $("undo").disabled = !g.log.length;
+  const r = $("result");
+  if (!g.ended) r.hidden = true;
+  else { const a = pts("me"), b = pts("op"); r.hidden = false;
+    if (a !== b) r.innerHTML = `<div class="result"><div class="w">${a > b ? "Hai vinto!" : "Vince l'avversario"}</div>${Math.max(a, b)} a ${Math.min(a, b)} VP</div>`;
+    else r.innerHTML = `<div class="result"><div class="w">Pareggio ${a} a ${b}</div><p class="hint">Col pareggio vince chi ha agito per ultimo. Chi è stato?</p>
+      <div class="btnrow"><button data-tie="me">Io</button><button data-tie="op">Avversario</button></div>
+      ${g.tieWinner ? `<div class="w">${g.tieWinner === "me" ? "Hai vinto!" : "Vince l'avversario"}</div>` : ""}</div>`; }
+}
+
+function render() {
+  ["squadra", "carte", "partita"].forEach(v => $("v-" + v).hidden = S.view !== v);
+  document.querySelectorAll(".steps button").forEach(b => { if (b.dataset.go === S.view) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+  $("st1").textContent = `${S.mine.length}/${S.size} unità`; $("st2").textContent = `${S.deck.length}/${MAZZO} carte`;
+  $("st3").textContent = `${pts("me")} – ${pts("op")}`;
+  if (S.view === "squadra") renderSquadra(); else if (S.view === "carte") renderCarte(); else renderPartita();
+}
+function go(v) { S.view = v; save(); render(); window.scrollTo(0, 0); }
+
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("button"); if (!b) return; const d = b.dataset, g = G();
+  if (d.go) go(d.go);
+  else if (d.size) { S.size = +d.size; S.mine = S.mine.slice(0, S.size); pulisciMazzo(); save(); render(); }
+  else if (d.addme) { const u = byCard[d.addme]; if (S.mine.length < S.size && (u.mp || !S.mine.includes(u.carta))) { S.mine.push(u.carta); save(); render(); } }
+  else if (d.rmme !== undefined) { S.mine.splice(+d.rmme, 1); pulisciMazzo(); save(); render(); }
+  else if (b.id === "toCards") go("carte");
+  else if (d.card) { const n = d.card, i = S.deck.indexOf(n); if (i >= 0) S.deck.splice(i, 1); else if (S.deck.length < MAZZO) S.deck.push(n); save(); render(); }
+  else if (b.id === "best") { S.deck = ordina(mySq(), myLegal()).slice(0, MAZZO).map(c => c.t.nome); save(); render(); }
+  else if (b.id === "clearDeck") { S.deck = []; save(); render(); }
+  else if (b.id === "create") { const name = ($("sqName").value.trim() || "Squadra " + (S.saved.length + 1)); S.name = name;
+    const i = S.saved.findIndex(s => s.name === name), rec = {name, size: S.size, mine: S.mine.slice(), deck: S.deck.slice()};
+    if (i >= 0) S.saved[i] = rec; else S.saved.unshift(rec);
+    S.game.played = []; go("partita"); }
+  else if (d.load !== undefined) { const s = S.saved[+d.load]; S.size = s.size; S.mine = s.mine.slice(); S.deck = s.deck.slice(); S.name = s.name; pulisciMazzo(); go("carte"); }
+  else if (d.delsv !== undefined) { S.saved.splice(+d.delsv, 1); save(); render(); }
+  else if (d.addop) { g.opp.push(d.addop); save(); render(); }
+  else if (d.rmop !== undefined) { const i = +d.rmop;
+    // Togliendo un robot gli indici cambiano: ricalcolo le chiavi dei robot avversari gia' eliminati
+    g.log.forEach(e => { if (e.key && e.key.startsWith("op:")) { const m = e.key.match(/^op:([ur])(\d+)(.*)$/); if (m) { const k = +m[2]; if (k > i) e.key = `op:${m[1]}${k - 1}${m[3]}`; } } });
+    g.opp.splice(i, 1); save(); render(); }
+  else if (d.kill) { const [side, i, what] = d.kill.split("|"), list = side === "op" ? g.opp : S.mine, u = byCard[list[+i]]; if (!u) return;
+    const who = side === "op" ? "me" : "op";
+    if (what === "u") { const k = side + ":u" + i; add(who, u.vp, (side === "op" ? "Eliminato " : "Perso ") + u.nome + " (" + u.carta + ")", k); }
+    else { const [j] = what.slice(1).split(".").map(Number), k = side + ":r" + i + "." + what.slice(1), s = u.segnalini[j];
+      if (s) add(who, s[1], "Distrutto " + s[0] + " (RWS)", k); } }
+  else if (d.pt) { const [who, v, txt] = d.pt.split("|"); add(who, +v, txt); }
+  else if (d.obj) { const v = parseInt($(d.obj === "me" ? "objMe" : "objOp").value, 10); if (v > 0) add(d.obj, v, "Obiettivi fine Fase " + g.fase); }
+  else if (d.play) { const i = g.played.indexOf(d.play); if (i >= 0) g.played.splice(i, 1); else g.played.push(d.play); save(); render(); }
+  else if (b.id === "undo") { g.log.pop(); g.ended = false; save(); render(); }
+  else if (b.id === "finish") { g.ended = true; g.tieWinner = null; save(); render(); }
+  else if (d.tie) { g.tieWinner = d.tie; save(); render(); }
+  else if (b.id === "rdUp") { if (g.round < 10) g.round++; else if (g.fase === 1) { g.fase = 2; g.round = 1; } save(); render(); }
+  else if (b.id === "rdDown") { if (g.round > 1) g.round--; else if (g.fase === 2) { g.fase = 1; g.round = 10; } save(); render(); }
+  else if (b.id === "newGame") $("newConfirm").hidden = false;
+  else if (b.id === "newNo") $("newConfirm").hidden = true;
+  else if (b.id === "newYes") { S.game = nuovaPartita(); $("newConfirm").hidden = true; save(); render(); }
+});
+$("sqName").addEventListener("input", e => { S.name = e.target.value; save(); });
+
+// Prima apertura: squadra di esempio gia' pronta, da cambiare a piacere
+let visto = false; try { visto = !!localStorage.getItem(KEY + "-visto"); } catch (e) {}
+if (!S.mine.length && !S.saved.length && !visto) {
+  S.mine = ["EX02-U01", "EX02-U02", "EX02-U03"].filter(c => byCard[c]);
+  S.deck = ordina(mySq(), myLegal()).slice(0, MAZZO).map(c => c.t.nome);
+  S.name = "Esempio Asticassia";
+  try { localStorage.setItem(KEY + "-visto", "1"); } catch (e) {}
+}
+// Tiene lo schermo acceso durante la partita, se il telefono lo permette
+let lock = null;
+async function sveglio() { try { if ("wakeLock" in navigator && document.visibilityState === "visible") lock = await navigator.wakeLock.request("screen"); } catch (e) {} }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sveglio(); });
+document.addEventListener("click", () => { if (!lock) sveglio(); }, {once: true});
+render();
+</script>
+
+<script>
+// Rende l'app utilizzabile anche senza internet
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>
