@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta name="theme-color" content="#10141b">
+<meta name="theme-color" content="#eef1f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#10141b" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -101,7 +102,7 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
 .sv button{min-height:38px;padding:4px 10px}
 
 /* Partita */
-.board{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);z-index:5;background:var(--bg);padding-block:4px}
+.board{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--stepsH,62px));z-index:5;background:var(--bg);padding-block:4px}
 .scores{display:grid;grid-template-columns:1fr auto 1fr;gap:8px}
 .sc{border-radius:14px;padding:8px 12px;display:flex;flex-direction:column;min-width:0}
 .sc.me{background:var(--me-soft);border:2px solid var(--me)}
@@ -143,7 +144,8 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
 .dc{font-size:13.5px;padding:6px 10px;min-height:40px}
 .dc.played{opacity:.45;text-decoration:line-through}
 .log{list-style:none;margin:0;padding:0;max-height:240px;overflow:auto;display:flex;flex-direction:column}
-.log li{display:grid;grid-template-columns:48px 1fr auto;gap:8px;font-size:14px;padding:5px 0;border-bottom:1px solid var(--line)}
+.log li{display:grid;grid-template-columns:48px 1fr auto auto;gap:8px;align-items:center;font-size:14px;padding:5px 0;border-bottom:1px solid var(--line)}
+.log .del{min-height:34px;padding:0 10px;color:var(--muted)}
 .log .t{color:var(--muted);font-size:12px;padding-top:2px;font-variant-numeric:tabular-nums}
 .log .p{font:700 14px var(--display)}
 .log .me{color:var(--me)} .log .op{color:var(--op)}
@@ -173,6 +175,12 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
       <p class="hint" id="sqHint"></p>
       <div class="ugrid" id="myGrid"></div>
       <button class="primary" id="toCards">Avanti: scegli le carte</button>
+    </div>
+    <div class="panel">
+      <h3>Squadre consigliate</h3>
+      <p class="hint">Prova tutte le combinazioni possibili e mostra le 5 con l'affinità più alta.</p>
+      <button id="suggest">Calcola squadre consigliate</button>
+      <div class="saved" id="sugg"></div>
     </div>
     <div class="panel">
       <h3>Squadre salvate</h3>
@@ -321,6 +329,28 @@ function affinita(sq, mazzo, legali) {
   voci.push(["Componenti e abilità", p]);
   return {tot: voci.reduce((a, v) => a + v[1], 0), voci};
 }
+// Mazzo migliore: parte dalle prime 9 carte in ordine e scambia una carta alla volta finche' l'affinita' sale
+function mazzoMigliore(sq) {
+  const leg = ordina(sq, carteLegali(sq));
+  if (leg.length <= MAZZO) return leg.map(c => c.t.nome);
+  let deck = leg.slice(0, MAZZO), best = affinita(sq, deck, leg).tot, meglio = true;
+  while (meglio) { meglio = false;
+    const fuori = leg.filter(c => !deck.includes(c));
+    for (let i = 0; i < deck.length && !meglio; i++) for (const c of fuori) {
+      const prova = deck.slice(); prova[i] = c; const v = affinita(sq, prova, leg).tot;
+      if (v > best + 1e-9) { deck = prova; best = v; meglio = true; break; } } }
+  return deck.map(c => c.t.nome);
+}
+// Squadre consigliate: prova tutte le combinazioni (Mass Produced ripetibili) con il mazzo in ordine
+function squadreConsigliate(n, quante) {
+  const out = [], U = D.unita, cur = [];
+  (function rec(start) {
+    if (cur.length === n) { const sq = cur.map(c => byCard[c]), leg = ordina(sq, carteLegali(sq));
+      out.push({mine: cur.slice(), tot: affinita(sq, leg.slice(0, MAZZO), leg).tot}); return; }
+    for (let i = start; i < U.length; i++) { cur.push(U[i].carta); rec(U[i].mp ? i : i + 1); cur.pop(); }
+  })(0);
+  return out.sort((a, b) => b.tot - a.tot).slice(0, quante);
+}
 
 // ---------- Stato (salvato su questo telefono) ----------
 const KEY = "hangar-ga-v1";
@@ -335,6 +365,22 @@ const myLegal = () => carteLegali(mySq());
 const myDeck = () => { const leg = new Map(myLegal().map(c => [c.t.nome, c])); return S.deck.map(n => leg.get(n)).filter(Boolean); };
 function pulisciMazzo() { const ok = new Set(myLegal().map(c => c.t.nome)); S.deck = S.deck.filter(n => ok.has(n)); }
 const vpTxt = u => u.vpSeg ? `${u.vp} VP (+${u.vpSeg} RWS)` : `${u.vp} VP`;
+let sugg = null;   // squadre consigliate (non salvate)
+// Quando un robot esce dall'elenco, le chiavi del registro dei robot dopo di lui scalano di uno;
+// le sue restano nel punteggio ma non vengono piu' contate su nessun robot
+function rinumera(side, i) {
+  const re = new RegExp("^" + side + ":([ur])(\\d+)(.*)$");
+  G().log.forEach(e => { const m = e.key && e.key.match(re); if (!m) return; const k = +m[2];
+    if (k === i) e.key = side + ":x" + e.key.slice(side.length + 1);
+    else if (k > i) e.key = `${side}:${m[1]}${k - 1}${m[3]}`; });
+}
+// Cambiare del tutto squadra a partita iniziata: chiede se ripartire da zero
+function puoiCambiare(nuova) {
+  const inCorso = G().log.length > 0, uguale = nuova.join() === S.mine.join();
+  if (!inCorso || uguale) return true;
+  if (!confirm("C'è una partita in corso. Cambiando squadra la partita viene azzerata. Continuare?")) return false;
+  S.game = nuovaPartita(); return true;
+}
 
 // ---------- Squadra ----------
 function renderSquadra() {
@@ -351,6 +397,9 @@ function renderSquadra() {
   $("saved").innerHTML = S.saved.length ? S.saved.map((s, i) => `<div class="sv"><span><b>${esc(s.name)}</b><small>${s.mine.map(c => byCard[c] ? byCard[c].nome : c).join(", ")} · ${s.deck.length} carte</small></span>
       <button data-load="${i}">Usa</button><button data-delsv="${i}" aria-label="Elimina ${esc(s.name)}">×</button></div>`).join("")
     : '<p class="hint">Le squadre create compaiono qui, pronte da riusare.</p>';
+  $("sugg").innerHTML = sugg ? sugg.map((s, i) => `<div class="sv"><span><b>${s.mine.map(c => esc(byCard[c].nome)).join(" + ")}</b><small>Affinità ${f1(s.tot)} · ${s.mine.reduce((a, c) => a + byCard[c].vp + byCard[c].vpSeg, 0)} VP</small></span>
+      <button data-usesugg="${i}">Usa</button></div>`).join("") : "";
+  $("suggest").textContent = `Calcola squadre consigliate da ${S.size}`;
 }
 
 // ---------- Carte ----------
@@ -409,7 +458,7 @@ function renderPartita() {
   $("myTitle").textContent = S.name ? S.name : "La mia squadra";
   $("meList").innerHTML = S.mine.length ? killRows(S.mine, "me") : '<p class="hint">Crea prima la tua squadra.</p>';
   $("meDeck").innerHTML = S.deck.length ? S.deck.map(n => `<button class="dc${g.played.includes(n) ? " played" : ""}" data-play="${esc(n)}">${esc(n)}</button>`).join("") : '<p class="hint">Nessun mazzo.</p>';
-  $("log").innerHTML = g.log.slice().reverse().map(e => `<li><span class="t">F${e.fase} R${e.round}</span><span>${e.who === "me" ? esc(S.name || "Io") : "Avversario"}: ${esc(e.txt)}</span><span class="p ${e.who}">${e.pts > 0 ? "+" : ""}${e.pts}</span></li>`).join("");
+  $("log").innerHTML = g.log.map((e, i) => `<li><span class="t">F${e.fase} R${e.round}</span><span>${e.who === "me" ? esc(S.name || "Io") : "Avversario"}: ${esc(e.txt)}</span><span class="p ${e.who}">${e.pts > 0 ? "+" : ""}${e.pts}</span><button class="del" data-del="${i}" aria-label="Togli questa voce">×</button></li>`).reverse().join("");
   $("logEmpty").hidden = g.log.length > 0; $("undo").disabled = !g.log.length;
   const r = $("result");
   if (!g.ended) r.hidden = true;
@@ -432,24 +481,34 @@ function go(v) { S.view = v; save(); render(); window.scrollTo(0, 0); }
 document.addEventListener("click", ev => {
   const b = ev.target.closest("button"); if (!b) return; const d = b.dataset, g = G();
   if (d.go) go(d.go);
-  else if (d.size) { S.size = +d.size; S.mine = S.mine.slice(0, S.size); pulisciMazzo(); save(); render(); }
+  else if (d.size) { const n = +d.size; if (n === S.size) return;
+    if (S.mine.length > n) { const via = S.mine.slice(n).map(c => byCard[c] ? byCard[c].nome : c).join(", ");
+      if (!confirm(`Con ${n} unità tolgo dalla squadra: ${via}. Continuare?`)) return;
+      for (let i = S.mine.length - 1; i >= n; i--) rinumera("me", i); }
+    S.size = n; S.mine = S.mine.slice(0, n); sugg = null; pulisciMazzo(); save(); render(); }
   else if (d.addme) { const u = byCard[d.addme]; if (S.mine.length < S.size && (u.mp || !S.mine.includes(u.carta))) { S.mine.push(u.carta); save(); render(); } }
-  else if (d.rmme !== undefined) { S.mine.splice(+d.rmme, 1); pulisciMazzo(); save(); render(); }
+  else if (d.rmme !== undefined) { const i = +d.rmme; rinumera("me", i); S.mine.splice(i, 1); pulisciMazzo(); save(); render(); }
+  else if (b.id === "suggest") { b.disabled = true; b.textContent = "Calcolo…";
+    setTimeout(() => { sugg = squadreConsigliate(S.size, 5); render(); }, 20); }
+  else if (d.usesugg !== undefined) { const s = sugg && sugg[+d.usesugg]; if (!s || !puoiCambiare(s.mine)) return;
+    S.mine = s.mine.slice(); S.deck = mazzoMigliore(mySq()); S.name = ""; go("carte"); }
+  else if (d.del !== undefined) { const e = g.log[+d.del]; if (!e) return;
+    if (!confirm(`Togliere "${e.txt}" (${e.pts > 0 ? "+" : ""}${e.pts})?`)) return;
+    g.log.splice(+d.del, 1); g.ended = false; save(); render(); }
   else if (b.id === "toCards") go("carte");
   else if (d.card) { const n = d.card, i = S.deck.indexOf(n); if (i >= 0) S.deck.splice(i, 1); else if (S.deck.length < MAZZO) S.deck.push(n); save(); render(); }
-  else if (b.id === "best") { S.deck = ordina(mySq(), myLegal()).slice(0, MAZZO).map(c => c.t.nome); save(); render(); }
+  else if (b.id === "best") { S.deck = mazzoMigliore(mySq()); save(); render(); }
   else if (b.id === "clearDeck") { S.deck = []; save(); render(); }
   else if (b.id === "create") { const name = ($("sqName").value.trim() || "Squadra " + (S.saved.length + 1)); S.name = name;
     const i = S.saved.findIndex(s => s.name === name), rec = {name, size: S.size, mine: S.mine.slice(), deck: S.deck.slice()};
     if (i >= 0) S.saved[i] = rec; else S.saved.unshift(rec);
     S.game.played = []; go("partita"); }
-  else if (d.load !== undefined) { const s = S.saved[+d.load]; S.size = s.size; S.mine = s.mine.slice(); S.deck = s.deck.slice(); S.name = s.name; pulisciMazzo(); go("carte"); }
+  else if (d.load !== undefined) { const s = S.saved[+d.load]; if (!puoiCambiare(s.mine)) return; S.size = s.size; S.mine = s.mine.slice(); S.deck = s.deck.slice(); S.name = s.name; pulisciMazzo(); go("carte"); }
   else if (d.delsv !== undefined) { S.saved.splice(+d.delsv, 1); save(); render(); }
   else if (d.addop) { g.opp.push(d.addop); save(); render(); }
   else if (d.rmop !== undefined) { const i = +d.rmop;
     // Togliendo un robot gli indici cambiano: ricalcolo le chiavi dei robot avversari gia' eliminati
-    g.log.forEach(e => { if (e.key && e.key.startsWith("op:")) { const m = e.key.match(/^op:([ur])(\d+)(.*)$/); if (m) { const k = +m[2]; if (k > i) e.key = `op:${m[1]}${k - 1}${m[3]}`; } } });
-    g.opp.splice(i, 1); save(); render(); }
+    rinumera("op", i); g.opp.splice(i, 1); save(); render(); }
   else if (d.kill) { const [side, i, what] = d.kill.split("|"), list = side === "op" ? g.opp : S.mine, u = byCard[list[+i]]; if (!u) return;
     const who = side === "op" ? "me" : "op";
     if (what === "u") { const k = side + ":u" + i; add(who, u.vp, (side === "op" ? "Eliminato " : "Perso ") + u.nome + " (" + u.carta + ")", k); }
@@ -473,7 +532,7 @@ $("sqName").addEventListener("input", e => { S.name = e.target.value; save(); })
 let visto = false; try { visto = !!localStorage.getItem(KEY + "-visto"); } catch (e) {}
 if (!S.mine.length && !S.saved.length && !visto) {
   S.mine = ["EX02-U01", "EX02-U02", "EX02-U03"].filter(c => byCard[c]);
-  S.deck = ordina(mySq(), myLegal()).slice(0, MAZZO).map(c => c.t.nome);
+  S.deck = mazzoMigliore(mySq());
   S.name = "Esempio Asticassia";
   try { localStorage.setItem(KEY + "-visto", "1"); } catch (e) {}
 }
@@ -482,6 +541,11 @@ let lock = null;
 async function sveglio() { try { if ("wakeLock" in navigator && document.visibilityState === "visible") lock = await navigator.wakeLock.request("screen"); } catch (e) {} }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sveglio(); });
 document.addEventListener("click", () => { if (!lock) sveglio(); }, {once: true});
+// Il tabellone della partita si ferma sotto la barra dei passi, qualunque sia la sua altezza reale
+const passi = document.querySelector(".steps");
+const misura = () => document.documentElement.style.setProperty("--stepsH", passi.offsetHeight + "px");
+if ("ResizeObserver" in window) new ResizeObserver(misura).observe(passi);
+misura();
 render();
 </script>
 
