@@ -153,6 +153,42 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
 .btnrow button{flex:1;min-width:120px;font-weight:600}
 .result{border-radius:12px;padding:12px;background:var(--gold-soft);border:1px solid var(--gold)}
 .result .w{font:700 22px var(--display)}
+/* Schede della partita e schede dei robot */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.tabs button{font:600 14px var(--display);min-height:40px;padding:4px}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pane{display:flex;flex-direction:column;gap:14px}
+.lato{align-self:stretch}
+.lato button{flex:1;font:600 15px var(--display)}
+.ucs{display:flex;flex-direction:column;gap:10px}
+.uc{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--me);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.uc.op{border-left-color:var(--op)}
+.uh{display:flex;align-items:center;gap:6px}
+.uh .who{flex:1;min-width:0;display:flex;flex-direction:column}
+.uh .who b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uh .who small{color:var(--muted);font-size:12px}
+.uh .pv{font:600 14px var(--display);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:58px;text-align:center}
+.uh .pv b{font-size:28px;color:var(--ink)}
+.uh .pm{min-width:40px;padding:0;font:700 20px var(--display)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:inherit}
+.bar i.ok{background:var(--ok)} .bar i.gold{background:var(--gold)} .bar i.op{background:var(--op)}
+.dmg{display:grid;grid-template-columns:minmax(64px,1fr) 1.3fr 1.3fr;gap:6px}
+.dmg input{width:100%;text-align:center}
+.dmg .act{font-weight:600;padding:4px 6px}
+.dmg .atk{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.nota{margin:0;font-size:13px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:8px;padding:4px 8px}
+.stati{display:flex;gap:6px}
+.tg{flex:1;min-height:38px;padding:4px 6px;font:600 13px var(--display)}
+.tg[aria-pressed="true"]{background:var(--op-soft);border-color:var(--op);color:var(--op)}
+.pot{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cnt{display:grid;grid-template-columns:1fr 1fr;gap:3px;border:1px solid var(--line);border-radius:10px;padding:4px}
+.cnt.on{border-color:var(--teal);background:var(--teal-soft)}
+.cnt span{grid-column:1/-1;text-align:center;font-size:12px;line-height:1.15;min-height:30px}
+.cnt span b{display:block;font:700 17px var(--display);font-variant-numeric:tabular-nums}
+.cnt small{display:block;color:var(--muted);font-size:10.5px}
+.cnt button{min-height:34px;padding:0;font-weight:700}
+.riattiva{font-weight:600;color:var(--teal);border-color:var(--teal)}
 @media (max-width:420px){.extra{grid-template-columns:1fr}.sc .pts{font-size:34px}.mid{min-width:68px}}
 </style>
 </head>
@@ -215,8 +251,25 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
         <div class="sc op"><span class="nm">Avversario</span><span class="pts" id="ptOp">0</span></div>
       </div>
       <div class="banner" id="banner" hidden></div>
+      <div class="tabs" role="tablist" aria-label="Schede della partita">
+        <button role="tab" data-tab="robot">Robot</button>
+        <button role="tab" data-tab="punti">Punti</button>
+        <button role="tab" data-tab="carte">Carte</button>
+      </div>
     </div>
 
+    <!-- Scheda Robot: punti vita, stati e potenziamenti -->
+    <div class="pane" id="t-robot">
+      <div class="seg lato" id="lato">
+        <button data-lato="me">Miei</button><button data-lato="op">Avversario</button>
+      </div>
+      <div class="ucs" id="ucList"></div>
+      <p class="hint">Attacco: applica Fracture (+3 se arrivano 3 o più danni) e poi gli Scudi. Diretto (abilità, collisioni): solo gli Scudi.
+        A 0 PV il robot è distrutto: i VP vanno all'altro giocatore, i PV tornano pieni, gli stati spariscono, potenziamenti ed Energia restano.</p>
+    </div>
+
+    <!-- Scheda Punti -->
+    <div class="pane" id="t-punti">
     <div class="panel sec-op">
       <h2>Gundam dell'avversario</h2>
       <p class="hint">Tocca i suoi robot per aggiungerli. Ogni volta che ne elimini uno, premi <b>Eliminato</b>: i suoi VP vanno a te. I robot tornano in campo, quindi puoi premerlo più volte.</p>
@@ -247,8 +300,6 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
       <h2 id="myTitle">La mia squadra</h2>
       <p class="hint">Se l'avversario elimina un tuo robot, premi <b>Perso</b>: i suoi VP vanno all'avversario.</p>
       <div class="kills" id="meList"></div>
-      <h3>Il mio mazzo (tocca le carte giocate)</h3>
-      <div class="deck" id="meDeck"></div>
     </div>
 
     <div class="panel">
@@ -260,6 +311,15 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
       <div class="btnrow"><button id="newGame" class="danger">Nuova partita</button></div>
       <div id="newConfirm" hidden><p class="hint">Azzero punti, round e robot avversari? La tua squadra resta.</p>
         <div class="btnrow"><button id="newYes" class="danger">Sì, nuova partita</button><button id="newNo">No</button></div></div>
+    </div>
+    </div>
+
+    <!-- Scheda Carte -->
+    <div class="pane" id="t-carte">
+      <div class="panel sec-me">
+        <h3>Il mio mazzo (tocca le carte giocate)</h3>
+        <div class="deck" id="meDeck"></div>
+      </div>
     </div>
   </section>
 </div>
@@ -354,8 +414,8 @@ function squadreConsigliate(n, quante) {
 
 // ---------- Stato (salvato su questo telefono) ----------
 const KEY = "hangar-ga-v1";
-function nuovaPartita() { return {opp: [], log: [], fase: 1, round: 1, played: [], ended: false, tieWinner: null, last: null}; }
-let S = {view: "squadra", size: 3, mine: [], deck: [], name: "", saved: [], game: nuovaPartita()};
+function nuovaPartita() { return {opp: [], log: [], fase: 1, round: 1, played: [], ended: false, tieWinner: null, last: null, hp: {me: [], op: []}}; }
+let S = {view: "squadra", size: 3, mine: [], deck: [], name: "", saved: [], game: nuovaPartita(), tab: "robot", lato: "me"};
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.mine)) S = Object.assign(S, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 const $ = id => document.getElementById(id);
@@ -445,8 +505,69 @@ function killRows(list, side) {   // side "op": robot avversari (punti a me); "m
   });
   return rows.join("");
 }
+// ---------- Schede dei robot: punti vita, stati, potenziamenti ----------
+const STATI = [["disarm", "Disarm", "al prossimo attacco ritira i colpi a segno e niente critici"],
+  ["fracture", "Fracture", "il prossimo attacco da 3+ danni ne fa 3 in più"],
+  ["slow", "Slow", "il prossimo Advance non si muove"]];
+const POT = [["sh", "Scudi"], ["spd", "Velocità"], ["str", "Forza"], ["en", "Energia"]];
+const lista = side => side === "me" ? S.mine : G().opp;
+// Stato di un robot in campo; se al suo posto c'e' un altro robot (squadra cambiata) riparte da capo
+function us(side, i) {
+  const g = G(); if (!g.hp) g.hp = {me: [], op: []};
+  const c = lista(side)[i]; let e = g.hp[side][i];
+  if (!e || e.c !== c) { e = {c, pv: byCard[c].pv, st: {}, sh: 0, shOn: 0, spd: 0, str: 0, en: 0, nota: ""}; g.hp[side][i] = e; }
+  return e;
+}
+// Distrutto: VP all'altro giocatore, PV pieni, via gli stati; potenziamenti ed Energia restano (regolamento)
+function distrutto(side, i, e, prima) {
+  const u = byCard[e.c];
+  e.pv = u.pv; e.st = {};
+  e.nota = `${prima ? prima + " " : ""}Distrutto! +${u.vp} VP ${side === "op" ? "a te" : "all'avversario"}. Sposta la sua Timeline di 2 spazi avanti: rientra dalla base.`;
+  add(side === "op" ? "me" : "op", u.vp, (side === "op" ? "Eliminato " : "Perso ") + u.nome + " (" + u.carta + ")", side + ":u" + i);
+}
+function danno(side, i, n, attacco) {
+  const e = us(side, i), note = []; let d = n;
+  if (attacco && e.st.fracture && d >= 3) { d += 3; delete e.st.fracture; note.push("Fracture +3"); }
+  const parati = Math.min(e.shOn, d);
+  if (parati) { d -= parati; e.shOn -= parati; note.push(`${parati} parat${parati === 1 ? "o" : "i"} dagli Scudi`); }
+  const txt = `−${d} PV${note.length ? " (" + note.join(", ") + ")" : ""}.`;
+  e.pv -= d;
+  if (e.pv <= 0) return distrutto(side, i, e, txt);
+  e.nota = txt; save(); renderPartita();
+}
+function schedaRobot(side, i) {
+  const e = us(side, i), u = byCard[e.c], pct = Math.max(0, Math.min(100, e.pv / u.pv * 100));
+  const col = pct > 50 ? "ok" : pct > 25 ? "gold" : "op", id = side + "|" + i, attivi = STATI.filter(s => e.st[s[0]]);
+  return `<div class="uc ${side}">
+    <div class="uh"><span class="who"><b>${esc(u.nome)}</b><small>${u.carta} · ${u.vp} VP</small></span>
+      <button class="pm" data-pv="${id}|-1" aria-label="Togli 1 PV">−</button><span class="pv"><b>${e.pv}</b>/${u.pv}</span><button class="pm" data-pv="${id}|1" aria-label="Aggiungi 1 PV">+</button></div>
+    <div class="bar"><i class="${col}" style="width:${pct}%"></i></div>
+    <div class="dmg">
+      <input type="number" inputmode="numeric" min="1" placeholder="danni" id="dn-${side}-${i}" aria-label="Danni a ${esc(u.nome)}">
+      <button class="act atk" data-dmg="${id}|a">Attacco</button><button class="act" data-dmg="${id}|d">Diretto</button></div>
+    ${e.nota ? `<p class="nota">${esc(e.nota)}</p>` : ""}
+    <div class="stati">${STATI.map(([k, n]) => `<button class="tg" aria-pressed="${!!e.st[k]}" data-st="${id}|${k}">${n}</button>`).join("")}</div>
+    ${attivi.length ? `<p class="hint">${attivi.map(s => `<b>${s[1]}</b>: ${s[2]}`).join(" · ")}</p>` : ""}
+    <div class="pot">${POT.map(([k, n]) => `<div class="cnt${e[k] ? " on" : ""}"><span>${n} <b>${e[k]}</b>${k === "sh" && e.sh ? `<small>${e.shOn} attiv${e.shOn === 1 ? "o" : "i"}</small>` : ""}</span><button data-up="${id}|${k}|-1" aria-label="${n}: togli">−</button><button data-up="${id}|${k}|1" aria-label="${n}: aggiungi">+</button></div>`).join("")}</div>
+    ${e.shOn < e.sh ? `<button class="riattiva" data-react="${id}">Inizio attivazione: riattiva gli Scudi</button>` : ""}
+  </div>`;
+}
+function renderRobot() {
+  const l = lista(S.lato);
+  document.querySelectorAll("#lato button").forEach(b => { const n = lista(b.dataset.lato).length;
+    b.setAttribute("aria-pressed", b.dataset.lato === S.lato); b.textContent = (b.dataset.lato === "me" ? "Miei" : "Avversario") + (n ? ` (${n})` : ""); });
+  $("ucList").innerHTML = l.length ? l.map((c, i) => byCard[c] ? schedaRobot(S.lato, i) : "").join("")
+    : S.lato === "op" ? '<p class="hint">Nessun robot avversario. Aggiungili nella scheda <button data-tab="punti">Punti</button></p>'
+    : '<p class="hint">Crea prima la tua squadra.</p>';
+}
+
 function renderPartita() {
   const g = G();
+  if (!["robot", "punti", "carte"].includes(S.tab)) S.tab = "robot";
+  if (S.lato !== "op") S.lato = "me";
+  ["robot", "punti", "carte"].forEach(t => $("t-" + t).hidden = S.tab !== t);
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === S.tab));
+  if (S.tab === "robot") renderRobot();
   $("meName").textContent = S.name || "Io";
   $("ptMe").textContent = pts("me"); $("ptOp").textContent = pts("op");
   $("phase").textContent = "Fase " + g.fase; $("round").textContent = g.round;
@@ -487,7 +608,20 @@ document.addEventListener("click", ev => {
       for (let i = S.mine.length - 1; i >= n; i--) rinumera("me", i); }
     S.size = n; S.mine = S.mine.slice(0, n); sugg = null; pulisciMazzo(); save(); render(); }
   else if (d.addme) { const u = byCard[d.addme]; if (S.mine.length < S.size && (u.mp || !S.mine.includes(u.carta))) { S.mine.push(u.carta); save(); render(); } }
-  else if (d.rmme !== undefined) { const i = +d.rmme; rinumera("me", i); S.mine.splice(i, 1); pulisciMazzo(); save(); render(); }
+  else if (d.rmme !== undefined) { const i = +d.rmme; rinumera("me", i); S.mine.splice(i, 1); if (G().hp) G().hp.me.splice(i, 1); pulisciMazzo(); save(); render(); }
+  else if (d.tab) { S.tab = d.tab; save(); render(); window.scrollTo(0, 0); }
+  else if (d.lato) { S.lato = d.lato; save(); render(); }
+  else if (d.pv) { const [side, i, v] = d.pv.split("|"), e = us(side, +i), max = byCard[e.c].pv;
+    e.pv = Math.min(max, e.pv + +v); e.nota = "";
+    if (e.pv <= 0) distrutto(side, +i, e); else { save(); render(); } }
+  else if (d.dmg) { const [side, i, tipo] = d.dmg.split("|"), inp = $(`dn-${side}-${i}`), n = parseInt(inp.value, 10);
+    if (!(n > 0)) { inp.focus(); return; } danno(side, +i, n, tipo === "a"); }
+  else if (d.st) { const [side, i, k] = d.st.split("|"), e = us(side, +i);
+    if (e.st[k]) delete e.st[k]; else e.st[k] = true; e.nota = ""; save(); render(); }
+  else if (d.up) { const [side, i, k, v] = d.up.split("|"), e = us(side, +i), n = Math.max(0, e[k] + +v);
+    if (k === "sh") e.shOn = +v > 0 ? e.shOn + (n - e.sh) : Math.min(e.shOn, n);   // uno Scudo nuovo arriva attivo
+    e[k] = n; e.nota = ""; save(); render(); }
+  else if (d.react) { const [side, i] = d.react.split("|"), e = us(side, +i); e.shOn = e.sh; e.nota = "Scudi riattivati."; save(); render(); }
   else if (b.id === "suggest") { b.disabled = true; b.textContent = "Calcolo…";
     setTimeout(() => { sugg = squadreConsigliate(S.size, 5); render(); }, 20); }
   else if (d.usesugg !== undefined) { const s = sugg && sugg[+d.usesugg]; if (!s || !puoiCambiare(s.mine)) return;
@@ -508,10 +642,12 @@ document.addEventListener("click", ev => {
   else if (d.addop) { g.opp.push(d.addop); save(); render(); }
   else if (d.rmop !== undefined) { const i = +d.rmop;
     // Togliendo un robot gli indici cambiano: ricalcolo le chiavi dei robot avversari gia' eliminati
-    rinumera("op", i); g.opp.splice(i, 1); save(); render(); }
+    rinumera("op", i); g.opp.splice(i, 1); if (g.hp) g.hp.op.splice(i, 1); save(); render(); }
   else if (d.kill) { const [side, i, what] = d.kill.split("|"), list = side === "op" ? g.opp : S.mine, u = byCard[list[+i]]; if (!u) return;
     const who = side === "op" ? "me" : "op";
-    if (what === "u") { const k = side + ":u" + i; add(who, u.vp, (side === "op" ? "Eliminato " : "Perso ") + u.nome + " (" + u.carta + ")", k); }
+    if (what === "u") { const k = side + ":u" + i, e = us(side, +i);   // anche la sua scheda riparte: PV pieni, niente stati
+      e.pv = u.pv; e.st = {}; e.nota = "Distrutto: PV di nuovo pieni. Timeline +2, rientra dalla base.";
+      add(who, u.vp, (side === "op" ? "Eliminato " : "Perso ") + u.nome + " (" + u.carta + ")", k); }
     else { const [j] = what.slice(1).split(".").map(Number), k = side + ":r" + i + "." + what.slice(1), s = u.segnalini[j];
       if (s) add(who, s[1], "Distrutto " + s[0] + " (RWS)", k); } }
   else if (d.pt) { const [who, v, txt] = d.pt.split("|"); add(who, +v, txt); }
