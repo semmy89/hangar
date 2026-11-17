@@ -635,7 +635,7 @@ function renderCarte() {
 const G = () => S.game;
 const pts = who => G().log.filter(e => e.who === who).reduce((a, e) => a + e.pts, 0);
 const giu = key => G().log.some(e => e.key === key);
-function add(who, p, txt, key) { if (!p) return; G().log.push({who, pts: p, txt, key, fase: G().fase, round: G().round}); G().last = who; G().ended = false; save(); renderPartita(); }
+function add(who, p, txt, key) { if (!p) return; G().log.push({who, pts: p, txt, key, fase: G().fase, round: G().round}); G().last = who; G().ended = false; save(); render(); }
 // Un robot avversario si puo' togliere dall'elenco solo se ne' lui ne' i suoi RWS hanno gia' dato punti
 const toccato = i => G().log.some(e => e.key && (e.key === "op:u" + i || e.key.startsWith("op:r" + i + ".")));
 function killRows(list, side) {   // side "op": robot avversari (punti a me); "me": i miei (punti all'avversario)
@@ -680,7 +680,7 @@ function danno(side, i, n, attacco) {
   const txt = `−${d} ${T("pv")}${note.length ? " (" + note.join(", ") + ")" : ""}.`;
   e.pv -= d;
   if (e.pv <= 0) return distrutto(side, i, e, txt);
-  e.nota = txt; save(); renderPartita();
+  e.nota = txt; save(); render();
 }
 function schedaRobot(side, i) {
   const e = us(side, i), u = byCard[e.c], pct = Math.max(0, Math.min(100, e.pv / u.pv * 100));
