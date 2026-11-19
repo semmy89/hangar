@@ -46,6 +46,7 @@
 .piede{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:18px 8px 4px;color:var(--muted);font-size:13px}
 .piede p{margin:0}
 .piede .hint{max-width:46ch;font-size:12px}
+.piede .commenti{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:inherit;font-weight:600;text-decoration:none}
 .lingua{align-self:center}
 .lingua button{min-width:52px;font:700 14px var(--display);min-height:38px}
 #opAdd{background:var(--panel);border:1px solid var(--line);border-top:5px solid var(--op);border-radius:16px;padding:2px 14px 14px}
@@ -343,6 +344,7 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
 
   <footer class="piede">
     <div class="seg lingua" id="lingua"><button data-lang="it">IT</button><button data-lang="en">EN</button></div>
+    <a class="commenti" href="https://docs.google.com/forms/d/e/1FAIpQLScqYklRlgulJcVbK2sqQ3bQWaulNBgDyh3EsGx19OGkiHP5_g/viewform" target="_blank" rel="noopener" data-t="foot.comm">💬 Commenti e suggerimenti</a>
     <p><b>Hangar</b> · <span data-t="foot.by">creata da</span> <b>semmy89</b> · © 2026</p>
     <p class="hint" data-t="foot.disc">App non ufficiale fatta da un fan, non affiliata a Bandai. Gundam Assemble e i nomi dei Gundam appartengono ai rispettivi proprietari.</p>
   </footer>
@@ -380,6 +382,7 @@ const TESTI = {
     "newGame": "Nuova partita", "newQ": "Azzero punti, round e robot avversari? La tua squadra resta.", "newYes": "Sì, nuova partita", "newNo": "No",
     "deck.title": "Il mio mazzo (tocca le carte giocate)",
     "foot.by": "creata da",
+    "foot.comm": "💬 Commenti e suggerimenti",
     "foot.disc": "App non ufficiale fatta da un fan, non affiliata a Bandai. Gundam Assemble e i nomi dei Gundam appartengono ai rispettivi proprietari.",
     "legal.firma": f => `firma di "${f}"`, "legal.tratto": (t, n) => `tratto ${t} (${n} unità in squadra)`, "legal.gen": "senza requisiti",
     "aff.tratti": "Tratti in comune", "aff.carte": "Carte Tattiche", "aff.parole": "Parole chiave", "aff.comp": "Componenti e abilità",
@@ -435,6 +438,7 @@ const TESTI = {
     "newGame": "New game", "newQ": "Reset points, round and opponent units? Your squad stays.", "newYes": "Yes, new game", "newNo": "No",
     "deck.title": "My deck (tap the cards you played)",
     "foot.by": "made by",
+    "foot.comm": "💬 Comments and suggestions",
     "foot.disc": "Unofficial fan-made app, not affiliated with Bandai. Gundam Assemble and Gundam names belong to their respective owners.",
     "legal.firma": f => `signature of "${f}"`, "legal.tratto": (t, n) => `trait ${t} (${n} ${n === 1 ? "unit" : "units"} in squad)`, "legal.gen": "no requirements",
     "aff.tratti": "Shared traits", "aff.carte": "Tactics cards", "aff.parole": "Keywords", "aff.comp": "Components and abilities",
