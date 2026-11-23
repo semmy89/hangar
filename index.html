@@ -172,6 +172,12 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
 .btnrow button{flex:1;min-width:120px;font-weight:600}
 .result{border-radius:12px;padding:12px;background:var(--gold-soft);border:1px solid var(--gold)}
 .result .w{font:700 22px var(--display)}
+.result .btnrow{margin-top:10px}
+.inst{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--teal-soft);border:1px solid var(--teal);border-radius:12px;padding:8px 10px;margin-bottom:12px}
+.inst span{flex:1;min-width:160px;font-weight:600}
+.inst button{min-height:40px}
+.inst .x{background:none;border:none;font-size:20px;padding:0 6px;color:var(--muted)}
+.inst p{flex-basis:100%;margin:0}
 /* Schede della partita e schede dei robot */
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
 .tabs button{font:600 14px var(--display);min-height:40px;padding:4px}
@@ -224,6 +230,11 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
 
   <!-- ============ SQUADRA ============ -->
   <section id="v-squadra" class="wrap">
+    <div class="inst" id="instBar" hidden>
+      <span data-t="inst.txt">📲 Installa Hangar sul telefono: si apre come un'app e funziona anche senza internet.</span>
+      <button id="install" class="primary" data-t="inst.btn">Installa</button><button id="instNo" class="x" aria-label="Chiudi">×</button>
+      <p class="hint" id="instIos" hidden data-t="inst.ios">Su iPhone: tocca il tasto Condividi di Safari e poi «Aggiungi alla schermata Home».</p>
+    </div>
     <div class="panel">
       <h2 data-t="sq.title">Crea la tua squadra</h2>
       <div class="line"><h3 data-t="sq.units">Unità</h3><div class="seg" id="size"><button data-size="3">3</button><button data-size="5">5</button></div></div>
@@ -392,6 +403,10 @@ const TESTI = {
     "foot.comm": "💬 Commenti e suggerimenti",
     "foot.kofi": "☕ Offrimi un caffè",
     "foot.tiktok": "🎵 Scrivimi su TikTok",
+    "share.btn": "📸 Condividi il risultato", "share.wait": "Preparo l'immagine…", "share.saved": "Immagine salvata: la trovi nei download.",
+    "share.txt": "Partita di Gundam Assemble segnata con Hangar", "share.kills": n => n === 1 ? "1 robot distrutto" : `${n} robot distrutti`, "share.round": (f, r) => `Fase ${f} · Round ${r}`,
+    "inst.txt": "📲 Installa Hangar sul telefono: si apre come un'app e funziona anche senza internet.", "inst.btn": "Installa",
+    "inst.ios": "Su iPhone: tocca il tasto Condividi di Safari e poi «Aggiungi alla schermata Home».",
     "foot.free": "L'app è e resterà gratis, senza pubblicità: il caffè è solo per chi vuole.",
     "foot.disc": "App non ufficiale fatta da un fan, non affiliata a Bandai. Gundam Assemble e i nomi dei Gundam appartengono ai rispettivi proprietari.",
     "legal.firma": f => `firma di "${f}"`, "legal.tratto": (t, n) => `tratto ${t} (${n} unità in squadra)`, "legal.gen": "senza requisiti",
@@ -451,6 +466,10 @@ const TESTI = {
     "foot.comm": "💬 Comments and suggestions",
     "foot.kofi": "☕ Buy me a coffee",
     "foot.tiktok": "🎵 Message me on TikTok",
+    "share.btn": "📸 Share the result", "share.wait": "Making the image…", "share.saved": "Image saved: you'll find it in your downloads.",
+    "share.txt": "Gundam Assemble game tracked with Hangar", "share.kills": n => n === 1 ? "1 unit defeated" : `${n} units defeated`, "share.round": (f, r) => `Phase ${f} · Round ${r}`,
+    "inst.txt": "📲 Install Hangar on your phone: it opens like an app and works offline.", "inst.btn": "Install",
+    "inst.ios": "On iPhone: tap Safari's Share button, then “Add to Home Screen”.",
     "foot.free": "The app is and will stay free, with no ads: the coffee is only if you want to.",
     "foot.disc": "Unofficial fan-made app, not affiliated with Bandai. Gundam Assemble and Gundam names belong to their respective owners.",
     "legal.firma": f => `signature of "${f}"`, "legal.tratto": (t, n) => `trait ${t} (${n} ${n === 1 ? "unit" : "units"} in squad)`, "legal.gen": "no requirements",
@@ -758,7 +777,8 @@ function renderPartita() {
     if (a !== b) r.innerHTML = `<div class="result"><div class="w">${T(a > b ? "win" : "lose")}</div>${T("score", Math.max(a, b), Math.min(a, b))}</div>`;
     else r.innerHTML = `<div class="result"><div class="w">${T("tie", a, b)}</div><p class="hint">${T("tieQ")}</p>
       <div class="btnrow"><button data-tie="me">${T("io")}</button><button data-tie="op">${T("avv")}</button></div>
-      ${g.tieWinner ? `<div class="w">${T(g.tieWinner === "me" ? "win" : "lose")}</div>` : ""}</div>`; }
+      ${g.tieWinner ? `<div class="w">${T(g.tieWinner === "me" ? "win" : "lose")}</div>` : ""}</div>`;
+    if (a !== b || g.tieWinner) r.firstElementChild.insertAdjacentHTML("beforeend", `<div class="btnrow"><button id="shareRes" class="primary">${T("share.btn")}</button></div>`); }
 }
 
 function render() {
@@ -832,6 +852,9 @@ document.addEventListener("click", ev => {
   else if (d.obj) { const v = parseInt($(d.obj === "me" ? "objMe" : "objOp").value, 10); if (v > 0) add(d.obj, v, T("log.obj", g.fase)); }
   else if (d.play) { const i = g.played.indexOf(d.play); if (i >= 0) g.played.splice(i, 1); else g.played.push(d.play); save(); render(); }
   else if (b.id === "undo") { g.log.pop(); g.ended = false; save(); render(); }
+  else if (b.id === "shareRes") condividiRisultato(b);
+  else if (b.id === "install") installa();
+  else if (b.id === "instNo") { S.noInst = true; save(); $("instBar").hidden = true; }
   else if (b.id === "finish") { g.ended = true; g.tieWinner = null; save(); render(); }
   else if (d.tie) { g.tieWinner = d.tie; save(); render(); }
   else if (b.id === "rdUp") { if (g.round < 10) g.round++; else if (g.fase === 1) { g.fase = 2; g.round = 1; } save(); render(); }
@@ -860,6 +883,77 @@ const passi = document.querySelector(".steps");
 const misura = () => document.documentElement.style.setProperty("--stepsH", passi.offsetHeight + "px");
 if ("ResizeObserver" in window) new ResizeObserver(misura).observe(passi);
 misura();
+
+// ---------- Immagine del risultato da condividere (1080x1350, adatta a WhatsApp, TikTok, Reddit) ----------
+async function immagineRisultato() {
+  const g = G(), W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"), DISP = '"Chakra Petch", "Bahnschrift", sans-serif', BODY = '"Barlow", "Segoe UI", sans-serif';
+  try { await Promise.all([document.fonts.load('700 80px "Chakra Petch"'), document.fonts.load('600 40px "Barlow"')]); } catch (e) {}
+  const rosso = S.colore === "rosso", CME = rosso ? "#ff5d55" : "#4d8dff", COP = rosso ? "#4d8dff" : "#ff5d55", ORO = "#f2c14e";
+  // sfondo scuro con griglia da hangar
+  const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "#0d1118"); gr.addColorStop(1, "#1a2433");
+  x.fillStyle = gr; x.fillRect(0, 0, W, H);
+  x.strokeStyle = "rgba(255,255,255,.05)"; x.lineWidth = 2;
+  for (let i = 0; i <= W; i += 60) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, H); x.stroke(); }
+  for (let i = 0; i <= H; i += 60) { x.beginPath(); x.moveTo(0, i); x.lineTo(W, i); x.stroke(); }
+  // testo che si restringe se non ci sta
+  const scrivi = (t, px, y, size, peso, font, col, max, al = "center") => {
+    let s = size; x.font = `${peso} ${s}px ${font}`;
+    while (x.measureText(t).width > max && s > 18) { s -= 2; x.font = `${peso} ${s}px ${font}`; }
+    x.fillStyle = col; x.textAlign = al; x.fillText(t, px, y);
+  };
+  scrivi("HANGAR", W / 2, 130, 96, 700, DISP, "#ffffff", 900);
+  scrivi("GUNDAM ASSEMBLE", W / 2, 185, 36, 600, DISP, "#8fa0b8", 900);
+  // risultato
+  const a = pts("me"), b = pts("op"), vince = a !== b ? (a > b ? "me" : "op") : g.tieWinner;
+  const titolo = a === b ? T("tie", a, b) + " · " + T(vince === "me" ? "win" : "lose") : T(vince === "me" ? "win" : "lose");
+  scrivi(titolo.toUpperCase(), W / 2, 300, 72, 700, DISP, ORO, 960);
+  // due colonne: nome, punti, robot
+  const colonna = (cx, nome, p, col, robot, kills, vinto) => {
+    x.fillStyle = "rgba(255,255,255,.06)"; x.strokeStyle = col; x.lineWidth = vinto ? 8 : 3;
+    x.beginPath(); if (x.roundRect) x.roundRect(cx - 215, 360, 430, 740, 28); else x.rect(cx - 215, 360, 430, 740); x.fill(); x.stroke();
+    scrivi(nome, cx, 440, 48, 700, DISP, col, 390);
+    scrivi(String(p), cx, 620, 190, 700, DISP, "#ffffff", 420);
+    scrivi("VP", cx, 680, 38, 600, DISP, "#8fa0b8", 420);
+    robot.slice(0, 5).forEach((r, i) => scrivi(r, cx, 770 + i * 58, 34, 600, BODY, "#dbe3ee", 390));
+    scrivi(T("share.kills", kills), cx, 1065, 32, 600, BODY, col, 420);
+  };
+  const nomi = arr => arr.map(k => byCard[k] ? byCard[k].nome : k);
+  const conta = re => g.log.filter(e => e.key && re.test(e.key)).length;
+  colonna(285, S.name || T("io"), a, CME, nomi(S.mine), conta(/^op:x?u/), vince === "me");
+  colonna(795, T("avv"), b, COP, nomi(g.opp), conta(/^me:x?u/), vince === "op");
+  scrivi("VS", W / 2, 640, 44, 700, DISP, "#8fa0b8", 70);
+  scrivi(T("share.round", g.fase, g.round) + " · " + new Date().toLocaleDateString(S.lang === "en" ? "en-GB" : "it-IT"), W / 2, 1180, 36, 600, BODY, "#c3ccda", 960);
+  scrivi("semmy89.github.io/hangar", W / 2, 1270, 40, 700, DISP, ORO, 960);
+  return new Promise(ok => c.toBlob(ok, "image/png"));
+}
+async function condividiRisultato(btn) {
+  const testo = btn.textContent; btn.disabled = true; btn.textContent = T("share.wait");
+  try {
+    const blob = await immagineRisultato(), file = new File([blob], "hangar-partita.png", {type: "image/png"});
+    if (navigator.canShare && navigator.canShare({files: [file]})) {
+      try { await navigator.share({files: [file], text: T("share.txt") + ": https://semmy89.github.io/hangar/"}); } catch (e) {}
+    } else {   // computer o browser senza condivisione: scarica l'immagine
+      const l = document.createElement("a"); l.href = URL.createObjectURL(blob); l.download = "hangar-partita.png";
+      document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(l.href), 5000);
+      alert(T("share.saved"));
+    }
+  } finally { btn.disabled = false; btn.textContent = testo; }
+}
+
+// ---------- Installa l'app ----------
+let richiestaInst = null;
+const installata = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const iPhone = /iphone|ipad|ipod/i.test(navigator.userAgent);
+function mostraInst() { $("instBar").hidden = S.noInst || installata() || !(richiestaInst || iPhone); }
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); richiestaInst = e; mostraInst(); });
+window.addEventListener("appinstalled", () => { richiestaInst = null; $("instBar").hidden = true; });
+async function installa() {
+  if (!richiestaInst) { $("instIos").hidden = !$("instIos").hidden; return; }
+  richiestaInst.prompt(); try { await richiestaInst.userChoice; } catch (e) {}
+  richiestaInst = null; mostraInst();
+}
+mostraInst();
 render();
 </script>
 
