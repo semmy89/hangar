@@ -169,6 +169,11 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
 .log .p{font:700 14px var(--display)}
 .log .me{color:var(--me)} .log .op{color:var(--op)}
 .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.ricevuta{border:2px solid var(--me)}
+.ricevuta h3,.ricevuta h4{margin:0}
+.ricevuta .chip{padding:3px 12px}
+.rvcards{margin:0;padding-left:20px;columns:2;column-gap:16px;font-size:14px}
+.rvcards li{break-inside:avoid;margin-bottom:2px}
 .btnrow button{flex:1;min-width:120px;font-weight:600}
 .result{border-radius:12px;padding:12px;background:var(--gold-soft);border:1px solid var(--gold)}
 .result .w{font:700 22px var(--display)}
@@ -235,6 +240,7 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
       <button id="install" class="primary" data-t="inst.btn">Installa</button><button id="instNo" class="x" aria-label="Chiudi">×</button>
       <p class="hint" id="instIos" hidden data-t="inst.ios">Su iPhone: tocca il tasto Condividi di Safari e poi «Aggiungi alla schermata Home».</p>
     </div>
+    <div class="panel ricevuta" id="ricevuta" hidden></div>
     <div class="panel">
       <h2 data-t="sq.title">Crea la tua squadra</h2>
       <div class="line"><h3 data-t="sq.units">Unità</h3><div class="seg" id="size"><button data-size="3">3</button><button data-size="5">5</button></div></div>
@@ -270,6 +276,8 @@ h3{font:600 12px var(--display);letter-spacing:.12em;text-transform:uppercase;co
       <input id="sqName" maxlength="30" placeholder="Es. Asticassia RWS" data-tph="name.ph" aria-label="Nome della squadra">
       <button class="primary" id="create" data-t="create">Crea squadra e vai alla partita</button>
       <p class="hint" id="createHint"></p>
+      <button id="shareSq" data-t="shsq.btn">📤 Condividi squadra e carte</button>
+      <p class="hint" data-t="shsq.hint">Mandala a un amico: dal link vede robot e carte e può salvarla nella sua app.</p>
     </div>
   </section>
 
@@ -405,6 +413,12 @@ const TESTI = {
     "foot.tiktok": "🎵 Scrivimi su TikTok",
     "share.btn": "📸 Condividi il risultato", "share.wait": "Preparo l'immagine…", "share.saved": "Immagine salvata: la trovi nei download.",
     "share.txt": "Partita di Gundam Assemble segnata con Hangar", "share.kills": n => n === 1 ? "1 robot distrutto" : `${n} robot distrutti`, "share.round": (f, r) => `Fase ${f} · Round ${r}`,
+    "shsq.btn": "📤 Condividi squadra e carte", "shsq.hint": "Mandala a un amico: dal link vede robot e carte e può salvarla nella sua app.",
+    "shsq.txt": n => `La mia squadra di Gundam Assemble: ${n}. Aprila in Hangar:`, "shsq.got": "📥 Squadra ricevuta",
+    "shsq.cards": n => `Carte Tattiche (${n})`, "shsq.save": "Salva tra le mie squadre", "shsq.close": "Chiudi",
+    "shsq.anon": "Squadra condivisa", "shsq.copied": "Link copiato: incollalo dove vuoi.", "shsq.copy": "Copia questo link:",
+    "shsq.saved": n => `Salvata in «Squadre salvate» come «${n}».`, "shsq.mia": "LA MIA SQUADRA", "shsq.carte": "CARTE TATTICHE",
+    "shsq.units": (n, vp) => `${n} unità · ${vp} VP`,
     "inst.txt": "📲 Installa Hangar sul telefono: si apre come un'app e funziona anche senza internet.", "inst.btn": "Installa",
     "inst.ios": "Su iPhone: tocca il tasto Condividi di Safari e poi «Aggiungi alla schermata Home».",
     "foot.free": "L'app è e resterà gratis, senza pubblicità: il caffè è solo per chi vuole.",
@@ -468,6 +482,12 @@ const TESTI = {
     "foot.tiktok": "🎵 Message me on TikTok",
     "share.btn": "📸 Share the result", "share.wait": "Making the image…", "share.saved": "Image saved: you'll find it in your downloads.",
     "share.txt": "Gundam Assemble game tracked with Hangar", "share.kills": n => n === 1 ? "1 unit defeated" : `${n} units defeated`, "share.round": (f, r) => `Phase ${f} · Round ${r}`,
+    "shsq.btn": "📤 Share squad and cards", "shsq.hint": "Send it to a friend: the link shows units and cards and they can save it in their app.",
+    "shsq.txt": n => `My Gundam Assemble squad: ${n}. Open it in Hangar:`, "shsq.got": "📥 Squad received",
+    "shsq.cards": n => `Tactics cards (${n})`, "shsq.save": "Save to my squads", "shsq.close": "Close",
+    "shsq.anon": "Shared squad", "shsq.copied": "Link copied: paste it anywhere.", "shsq.copy": "Copy this link:",
+    "shsq.saved": n => `Saved in “Saved squads” as “${n}”.`, "shsq.mia": "MY SQUAD", "shsq.carte": "TACTICS CARDS",
+    "shsq.units": (n, vp) => `${n} units · ${vp} VP`,
     "inst.txt": "📲 Install Hangar on your phone: it opens like an app and works offline.", "inst.btn": "Install",
     "inst.ios": "On iPhone: tap Safari's Share button, then “Add to Home Screen”.",
     "foot.free": "The app is and will stay free, with no ads: the coffee is only if you want to.",
@@ -610,6 +630,7 @@ const myDeck = () => { const leg = new Map(myLegal().map(c => [c.t.nome, c])); r
 function pulisciMazzo() { const ok = new Set(myLegal().map(c => c.t.nome)); S.deck = S.deck.filter(n => ok.has(n)); }
 const vpTxt = u => u.vpSeg ? `${u.vp} VP (+${u.vpSeg} RWS)` : `${u.vp} VP`;
 let sugg = null;   // squadre consigliate (non salvate)
+let ricevuta = null;   // squadra arrivata da un link #sq=… (non ancora salvata)
 // Quando un robot esce dall'elenco, le chiavi del registro dei robot dopo di lui scalano di uno;
 // le sue restano nel punteggio ma non vengono piu' contate su nessun robot
 function rinumera(side, i) {
@@ -645,6 +666,11 @@ function renderSquadra() {
   $("sugg").innerHTML = sugg ? sugg.map((s, i) => `<div class="sv"><span><b>${s.mine.map(c => esc(byCard[c].nome)).join(" + ")}</b><small>${T("aff.word")} ${f1(s.tot)} · ${s.mine.reduce((a, c) => a + byCard[c].vp + byCard[c].vpSeg, 0)} VP</small></span>
       <button data-usesugg="${i}">${T("use")}</button></div>`).join("") : "";
   $("suggest").textContent = T("sug.btn", S.size);
+  const rv = $("ricevuta"), r = ricevuta; rv.hidden = !r;
+  if (r) rv.innerHTML = `<h3>${T("shsq.got")}</h3><div><b>${esc(r.name)}</b> <small class="hint">· ${T("shsq.units", r.mine.length, r.mine.reduce((a, c) => a + byCard[c].vp + byCard[c].vpSeg, 0))}</small></div>
+    <div class="chips">${r.mine.map(c => `<span class="chip">${esc(byCard[c].nome)} <small>${c}</small></span>`).join("")}</div>
+    <h4>${T("shsq.cards", r.deck.length)}</h4><ul class="rvcards">${r.deck.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
+    <div class="btnrow"><button class="primary" id="rvSave">${T("shsq.save")}</button><button id="rvNo">${T("shsq.close")}</button></div>`;
 }
 
 // ---------- Carte ----------
@@ -662,6 +688,7 @@ function renderCarte() {
     $("aff").innerHTML = `<span>${T("aff.team")}</span><b>${f1(a.tot)}</b><ul>${a.voci.map(([n, v]) => `<li>${n}: ${v >= 0 ? "+" : ""}${f1(v)}</li>`).join("")}</ul>`;
   } else $("aff").hidden = true;
   const pronto = sq.length === S.size && S.deck.length === MAZZO;
+  $("shareSq").disabled = !sq.length;
   $("create").disabled = !pronto;
   $("createHint").textContent = pronto ? "" : sq.length !== S.size ? T("need.units", S.size, sq.length) : T("need.cards", MAZZO, S.deck.length);
   $("sqName").value = S.name;
@@ -853,6 +880,11 @@ document.addEventListener("click", ev => {
   else if (d.play) { const i = g.played.indexOf(d.play); if (i >= 0) g.played.splice(i, 1); else g.played.push(d.play); save(); render(); }
   else if (b.id === "undo") { g.log.pop(); g.ended = false; save(); render(); }
   else if (b.id === "shareRes") condividiRisultato(b);
+  else if (b.id === "shareSq") condividiSquadra(b);
+  else if (b.id === "rvNo") { ricevuta = null; render(); }
+  else if (b.id === "rvSave") { const r = ricevuta; let n = r.name, k = 2;
+    while (S.saved.some(s => s.name === n)) n = `${r.name} (${k++})`;
+    S.saved.unshift({name: n, size: r.size, mine: r.mine, deck: r.deck}); ricevuta = null; save(); render(); alert(T("shsq.saved", n)); }
   else if (b.id === "install") installa();
   else if (b.id === "instNo") { S.noInst = true; save(); $("instBar").hidden = true; }
   else if (b.id === "finish") { g.ended = true; g.tieWinner = null; save(); render(); }
@@ -941,6 +973,72 @@ async function condividiRisultato(btn) {
   } finally { btn.disabled = false; btn.textContent = testo; }
 }
 
+// ---------- Condividi squadra e carte (link #sq=… + immagine) ----------
+const b64e = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0)));
+const linkSquadra = () => "https://semmy89.github.io/hangar/#sq=" + b64e(JSON.stringify({n: S.name || "", s: S.size, m: S.mine, d: S.deck}));
+function leggiRicevuta() {
+  const m = location.hash.match(/^#sq=([\w-]+)/); if (!m) return;
+  try { const o = JSON.parse(b64d(m[1])), size = o.s === 5 ? 5 : 3;
+    const mine = (Array.isArray(o.m) ? o.m : []).filter(c => byCard[c]).slice(0, size);
+    const leg = new Set(carteLegali(mine.map(c => byCard[c])).map(c => c.t.nome));
+    const deck = [...new Set((Array.isArray(o.d) ? o.d : []).map(String))].filter(n => leg.has(n)).slice(0, MAZZO);
+    if (mine.length) { ricevuta = {name: String(o.n || "").trim().slice(0, 30) || T("shsq.anon"), size, mine, deck}; S.view = "squadra"; }
+  } catch (e) {}
+  history.replaceState(null, "", location.pathname + location.search);
+}
+async function immagineSquadra() {
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"), DISP = '"Chakra Petch", "Bahnschrift", sans-serif', BODY = '"Barlow", "Segoe UI", sans-serif';
+  try { await Promise.all([document.fonts.load('700 80px "Chakra Petch"'), document.fonts.load('600 40px "Barlow"')]); } catch (e) {}
+  const CME = S.colore === "rosso" ? "#ff5d55" : "#4d8dff", ORO = "#f2c14e";
+  const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "#0d1118"); gr.addColorStop(1, "#1a2433");
+  x.fillStyle = gr; x.fillRect(0, 0, W, H);
+  x.strokeStyle = "rgba(255,255,255,.05)"; x.lineWidth = 2;
+  for (let i = 0; i <= W; i += 60) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, H); x.stroke(); }
+  for (let i = 0; i <= H; i += 60) { x.beginPath(); x.moveTo(0, i); x.lineTo(W, i); x.stroke(); }
+  const scrivi = (t, px, y, size, peso, font, col, max, al = "center") => {
+    let s = size; x.font = `${peso} ${s}px ${font}`;
+    while (x.measureText(t).width > max && s > 18) { s -= 2; x.font = `${peso} ${s}px ${font}`; }
+    x.fillStyle = col; x.textAlign = al; x.fillText(t, px, y);
+  };
+  const box = (y, h, col) => { x.fillStyle = "rgba(255,255,255,.06)"; x.strokeStyle = col; x.lineWidth = 3;
+    x.beginPath(); if (x.roundRect) x.roundRect(70, y, W - 140, h, 26); else x.rect(70, y, W - 140, h); x.fill(); x.stroke(); };
+  const sq = mySq(), vp = sq.reduce((a, u) => a + u.vp + u.vpSeg, 0);
+  scrivi("HANGAR", W / 2, 120, 88, 700, DISP, "#ffffff", 900);
+  scrivi("GUNDAM ASSEMBLE", W / 2, 172, 34, 600, DISP, "#8fa0b8", 900);
+  scrivi(T("shsq.mia"), W / 2, 250, 34, 600, DISP, "#8fa0b8", 900);
+  scrivi(S.name || T("io"), W / 2, 322, 66, 700, DISP, ORO, 940);
+  scrivi(T("shsq.units", sq.length, vp), W / 2, 372, 34, 600, BODY, "#c3ccda", 900);
+  const rh = sq.length > 3 ? 62 : 78, y0 = 410; box(y0, sq.length * rh + 30, CME);
+  sq.forEach((u, i) => { const y = y0 + 15 + i * rh + rh * .64;
+    scrivi(u.nome, 110, y, 40, 700, DISP, "#ffffff", 600, "left");
+    scrivi(`${u.carta} · ${vpTxt(u)}`, W - 110, y, 30, 600, BODY, "#8fa0b8", 330, "right"); });
+  const y1 = y0 + sq.length * rh + 30 + 50, deck = S.deck;
+  scrivi(T("shsq.carte") + ` (${deck.length})`, W / 2, y1 + 20, 34, 600, DISP, "#8fa0b8", 900);
+  const righe = Math.ceil(deck.length / 2) || 1, ch = Math.min(64, (1240 - y1 - 70) / righe); box(y1 + 45, righe * ch + 24, ORO);
+  deck.forEach((n, i) => { const col = i < righe ? 0 : 1, r = i % righe;
+    scrivi(n, col ? W / 2 + 20 : 110, y1 + 45 + 12 + r * ch + ch * .66, 32, 600, BODY, "#dbe3ee", 410, "left"); });
+  scrivi("semmy89.github.io/hangar", W / 2, 1300, 40, 700, DISP, ORO, 960);
+  return new Promise(ok => c.toBlob(ok, "image/png"));
+}
+async function condividiSquadra(btn) {
+  const testo = btn.textContent, url = linkSquadra(), msg = T("shsq.txt", S.name || T("io"));
+  btn.disabled = true; btn.textContent = T("share.wait");
+  try {
+    const blob = await immagineSquadra(), file = new File([blob], "hangar-squadra.png", {type: "image/png"});
+    if (navigator.canShare && navigator.canShare({files: [file]})) {
+      try { await navigator.share({files: [file], text: msg + "\n" + url}); } catch (e) {}
+    } else if (navigator.share) {
+      try { await navigator.share({text: msg, url}); } catch (e) {}
+    } else {   // computer: scarica l'immagine e copia il link
+      const l = document.createElement("a"); l.href = URL.createObjectURL(blob); l.download = "hangar-squadra.png";
+      document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(l.href), 5000);
+      try { await navigator.clipboard.writeText(url); alert(T("shsq.copied")); } catch (e) { prompt(T("shsq.copy"), url); }
+    }
+  } finally { btn.disabled = false; btn.textContent = testo; }
+}
+
 // ---------- Installa l'app ----------
 let richiestaInst = null;
 const installata = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -954,6 +1052,8 @@ async function installa() {
   richiestaInst = null; mostraInst();
 }
 mostraInst();
+leggiRicevuta();
+window.addEventListener("hashchange", () => { leggiRicevuta(); render(); });
 render();
 </script>
 

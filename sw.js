@@ -1,6 +1,6 @@
 // Service worker: salva l'app sul telefono per usarla offline.
 // Cambia VERSIONE ogni volta che aggiorni l'app, cosi' i telefoni scaricano la nuova.
-const VERSIONE = "hangar-20261123-001";
+const VERSIONE = "hangar-20261124-001";
 const FILE = ["./", "index.html", "manifest.webmanifest", "icona-192.png", "icona-512.png", "icona-180.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSIONE).then(c => c.addAll(FILE)).then(() => self.skipWaiting()));
